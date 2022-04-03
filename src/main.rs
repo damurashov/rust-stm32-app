@@ -10,7 +10,7 @@ static mut BSS_VARIABLE: u32 = 0;
 static mut DATA_VARIABLE: u32 = 1;
 
 #[no_mangle]
-pub extern "C" fn hard_fault() -> ! {
+pub fn hard_fault(_sp: *const u32) -> ! {
 	loop{}
 }
 
