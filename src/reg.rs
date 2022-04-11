@@ -4083,12 +4083,13 @@ macro_rules! ru32 {
 			use paste::paste;
 
 			let base: u32 = paste!{ [<$group _ BASE>] };
+			let offset: u32 = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
-			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
+			let pos: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
 
-            (*(base as *const u32) & mask) >> offset
+            (*((base + offset) as *const u32) & mask) >> pos
         }
-    }
+    };
 }
 
 #[macro_export]
@@ -4099,11 +4100,12 @@ macro_rules! wu32 {
 			use paste::paste;
 
 			let base: u32 = paste!{ [<$group _BASE>] };
+			let offset: u32 = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
-			let chunk_reset: u32 = *(base as *mut u32) & !mask;
+			let chunk_reset: u32 = *((base + offset) as *mut u32) & !mask;
 
-			*(base as *mut u32) = chunk_reset | (mask & ($val << offset));
+			*((base + offset) as *mut u32) = chunk_reset | (mask & ($val << offset));
         }
     }
 }
