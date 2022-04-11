@@ -4079,7 +4079,7 @@ pub const WWDG_SR_OFFSET: u32 = 0x8;
 macro_rules! ru32 {
     ($group:ident, $reg:ident, $fragment:ident) => {
         unsafe {
-            use reg::*;
+            use crate::reg::*;
 			use paste::paste;
 
 			let base: u32 = paste!{ [<$group _ BASE>] };
@@ -4095,7 +4095,7 @@ macro_rules! ru32 {
 macro_rules! wu32 {
     ($group:ident, $reg:ident, $fragment:ident, $val:literal) => {
         unsafe {
-            use reg::*;
+            use crate::reg::*;
 			use paste::paste;
 
 			let base: u32 = paste!{ [<$group _BASE>] };
