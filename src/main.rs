@@ -2,6 +2,9 @@
 #![no_main]
 #![feature(core_intrinsics)]
 
+mod periph;
+#[macro_use] mod reg;
+mod regop;
 extern crate rust_stm32;
 use core::intrinsics;
 
