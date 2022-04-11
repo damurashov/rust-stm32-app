@@ -4090,6 +4090,17 @@ macro_rules! ru32 {
             (*((base + offset) as *const u32) & mask) >> pos
         }
     };
+    ($group:ident, $reg:ident) => {
+        unsafe {
+            use crate::reg::*;
+			use paste::paste;
+
+			let base: u32 = paste!{ [<$group _ BASE>] };
+			let offset: u32 = paste!{ [<$group _ $reg _ OFFSET>] };
+
+            *((base + offset) as *const u32)
+        }
+    };
 }
 
 #[macro_export]
@@ -4106,6 +4117,17 @@ macro_rules! wu32 {
 			let chunk_reset: u32 = *((base + offset) as *mut u32) & !mask;
 
 			*((base + offset) as *mut u32) = chunk_reset | (mask & ($val << offset));
+        }
+    };
+    ($group:ident, $reg:ident, $val:literal) => {
+        unsafe {
+            use crate::reg::*;
+			use paste::paste;
+
+			let base: u32 = paste!{ [<$group _BASE>] };
+			let offset: u32 = paste!{ [<$group _ $reg _ OFFSET>] };
+
+			*((base + offset) as *mut u32) = $val;
         }
     }
 }
