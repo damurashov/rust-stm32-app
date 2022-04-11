@@ -4090,3 +4090,20 @@ macro_rules! ru32 {
         }
     }
 }
+
+#[macro_export]
+macro_rules! wu32 {
+    ($group:ident, $reg:ident, $fragment:ident, $val:literal) => {
+        unsafe {
+            use reg::*;
+			use paste::paste;
+
+			let base: u32 = paste!{ [<$group _BASE>] };
+			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
+			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
+			let chunk_reset: u32 = *(base as *mut u32) & !mask;
+
+			*(base as *mut u32) = chunk_reset | (mask & ($val << offset));
+        }
+    }
+}
