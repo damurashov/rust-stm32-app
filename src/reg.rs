@@ -4105,7 +4105,7 @@ macro_rules! ru32 {
 
 #[macro_export]
 macro_rules! wu32 {
-    ($group:ident, $reg:ident, $fragment:ident, $val:literal) => {
+    ($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
         unsafe {
             use crate::reg::*;
 			use paste::paste;
@@ -4119,7 +4119,7 @@ macro_rules! wu32 {
 			*((base + offset) as *mut u32) = chunk_reset | (mask & ($val << offset));
         }
     };
-    ($group:ident, $reg:ident, $val:literal) => {
+    ($group:ident, $reg:ident, $val:expr) => {
         unsafe {
             use crate::reg::*;
 			use paste::paste;
