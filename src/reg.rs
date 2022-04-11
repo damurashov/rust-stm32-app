@@ -4082,7 +4082,7 @@ macro_rules! ru32 {
             use reg::*;
 			use paste::paste;
 
-			let base: u32 = paste!{ [<$group _BASE>] };
+			let base: u32 = paste!{ [<$group _ BASE>] };
 			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
 
