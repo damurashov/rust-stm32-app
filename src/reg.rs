@@ -4074,3 +4074,19 @@ pub const USART_TDR_OFFSET: u32 = 0x26;
 pub const WWDG_CR_OFFSET: u32 = 0x0;
 pub const WWDG_CFR_OFFSET: u32 = 0x4;
 pub const WWDG_SR_OFFSET: u32 = 0x8;
+
+#[macro_export]
+macro_rules! ru32 {
+    ($group:ident, $reg:ident, $fragment:ident) => {
+        unsafe {
+            use reg::*;
+			use paste::paste;
+
+			let base: u32 = paste!{ [<$group _BASE>] };
+			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
+			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
+
+            (*(base as *const u32) & mask) >> offset
+        }
+    }
+}
