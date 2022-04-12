@@ -4113,10 +4113,10 @@ macro_rules! wu32 {
 			let base: u32 = paste!{ [<$group _BASE>] };
 			let offset: u32 = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: u32 = paste!{[<$group _ $reg _ $fragment _ MSK>]};
-			let offset: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
+			let pos: u32 = paste!{[<$group _ $reg _ $fragment _ POS>]};
 			let chunk_reset: u32 = *((base + offset) as *mut u32) & !mask;
 
-			*((base + offset) as *mut u32) = chunk_reset | (mask & ($val << offset));
+			*((base + offset) as *mut u32) = chunk_reset | (mask & ($val << pos));
         }
     };
     ($group:ident, $reg:ident, $val:expr) => {
