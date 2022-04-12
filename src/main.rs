@@ -22,6 +22,6 @@ fn entry() -> ! {
 	let _rodata = RODATA_VARIABLE;
 	let _bss = unsafe {&BSS_VARIABLE};
 	let _data = unsafe {&DATA_VARIABLE};
-	intrinsics::abort();
+	periph::rcc::configure();
 	loop {}
 }
