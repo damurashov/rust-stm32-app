@@ -1,11 +1,9 @@
-type TargetUint = u32;
-
 ///
 /// \param value    - value to be written into the register
 /// \param register - address of the register to write to
 ///
-pub unsafe fn write(val: TargetUint, register: TargetUint) {
-    *(register as *mut TargetUint) = val;
+pub unsafe fn write(val: usize, register: usize) {
+	*(register as *mut usize) = val;
 }
 
 ///
@@ -13,8 +11,9 @@ pub unsafe fn write(val: TargetUint, register: TargetUint) {
 /// \param register - address of the register to write to
 /// \param offset   - position of the register
 ///
-pub unsafe fn write_at(val: TargetUint, register: TargetUint, offset: TargetUint) {
-    *(register as *mut TargetUint) = val << offset;
+pub unsafe fn write_mask(val: usize, register: usize, mask: usize) {
+	let reg= &mut *(register as *mut usize);
+	*reg = (*reg & !mask) & ((val << mask.trailing_zeros()) & mask);
 }
 
 ///
@@ -22,8 +21,8 @@ pub unsafe fn write_at(val: TargetUint, register: TargetUint, offset: TargetUint
 ///
 /// \return value of the register
 ///
-pub unsafe fn read(register: TargetUint) -> TargetUint {
-    *(register as *const TargetUint)
+pub unsafe fn read(register: usize) -> usize {
+	*(register as *const usize)
 }
 
 ///
@@ -33,6 +32,6 @@ pub unsafe fn read(register: TargetUint) -> TargetUint {
 ///
 /// \return value of the register
 ///
-pub unsafe fn read_at(register: TargetUint, offset: TargetUint, mask: TargetUint) -> TargetUint {
-    (*(register as *const TargetUint) & mask) >> offset
+pub unsafe fn read_mask(register: usize, mask: usize) -> usize {
+	return (*(register as *const usize) & mask) >> mask.trailing_zeros();
 }
