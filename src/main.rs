@@ -23,5 +23,6 @@ fn entry() -> ! {
 	let _bss = unsafe {&BSS_VARIABLE};
 	let _data = unsafe {&DATA_VARIABLE};
 	periph::rcc::configure();
+	periph::gpio::configure();
 	loop {}
 }
