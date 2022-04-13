@@ -12,8 +12,9 @@ pub unsafe fn write(val: usize, register: usize) {
 /// \param offset   - position of the register
 ///
 pub unsafe fn write_mask(val: usize, register: usize, mask: usize) {
-	let reg= &mut *(register as *mut usize);
-	*reg = (*reg & !mask) & ((val << mask.trailing_zeros()) & mask);
+	let reg = &mut *(register as *mut usize);
+	*reg = *reg & !mask;
+	*reg |= (val << mask.trailing_zeros()) & mask;
 }
 
 ///
