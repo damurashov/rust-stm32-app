@@ -27,4 +27,6 @@ pub fn configure() {
 	// RCC_CFGR3
 	const USART1_CLOCK_SOURCE_PCK: usize = 0b00;
 	wr!(RCC, CFGR3, USART1SW, USART1_CLOCK_SOURCE_PCK);  // Use PCLK as clock source for UART1
+	// Debug module clock - enable
+	wr!(RCC, APB2ENR, DBGMCUEN, ENABLE);
 }
