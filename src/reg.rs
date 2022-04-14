@@ -4106,7 +4106,7 @@ macro_rules! rd {
 #[macro_export]
 macro_rules! wr {
     ($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
-        unsafe {
+        {
             use crate::reg::*;
 			use paste::paste;
 
@@ -4120,7 +4120,7 @@ macro_rules! wr {
         }
     };
     ($group:ident, $reg:ident, $val:expr) => {
-        unsafe {
+        {
             use crate::reg::*;
 			use paste::paste;
 
