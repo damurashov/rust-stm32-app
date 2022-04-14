@@ -17,7 +17,6 @@ pub fn configure() {
 	wr!(RCC, CFGR, PPRE, APB_PRESCALER_NO_DIV);
 	const PLL_SOURCE_HSI_DIV_2: usize = 0;  // Select HSI/2 as input clock source
 	wr!(RCC, CFGR, PLLSRC, PLL_SOURCE_HSI_DIV_2);
-	const PLL_MULT_12: usize = 0b1010;  //  Multiply PLL by 12 (HSI=8(Standard) / 2(HSI/2) * 12(PLLMUL)) = 48. PLL input must not exceed 48MHz
 	const PLL_MULT_8: usize = 0b0100;  //  Multiply PLL by 12 (HSI=8(Standard) / 2(HSI/2) * 12(PLLMUL)) = 48. PLL input must not exceed 48MHz
 	wr!(RCC, CFGR, PLLMUL, PLL_MULT_8);
 	// RCC_AHBENR
