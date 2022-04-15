@@ -3934,9 +3934,13 @@ pub const ADC_RESERVED4_OFFSET: usize = 0x2c;
 pub const ADC_DR_OFFSET: usize = 0x30;
 pub const ADC_COMMON_CCR_OFFSET: usize = 0x0;
 pub const CRC_DR_OFFSET: usize = 0x0;
-pub const CRC_CR_OFFSET: usize = 0x4;
-pub const CRC_INIT_OFFSET: usize = 0x8;
-pub const CRC_RESERVED3_OFFSET: usize = 0xc;
+pub const CRC_IDR_OFFSET: usize = 0x4;
+pub const CRC_RESERVED0_OFFSET: usize = 0x5;
+pub const CRC_RESERVED1_OFFSET: usize = 0x6;
+pub const CRC_CR_OFFSET: usize = 0x8;
+pub const CRC_RESERVED2_OFFSET: usize = 0xc;
+pub const CRC_INIT_OFFSET: usize = 0x10;
+pub const CRC_RESERVED3_OFFSET: usize = 0x14;
 pub const DBGMCU_IDCODE_OFFSET: usize = 0x0;
 pub const DBGMCU_CR_OFFSET: usize = 0x4;
 pub const DBGMCU_APB1FZ_OFFSET: usize = 0x8;
@@ -4070,60 +4074,9 @@ pub const USART_RQR_OFFSET: usize = 0x18;
 pub const USART_ISR_OFFSET: usize = 0x1c;
 pub const USART_ICR_OFFSET: usize = 0x20;
 pub const USART_RDR_OFFSET: usize = 0x24;
-pub const USART_TDR_OFFSET: usize = 0x26;
+pub const USART_RESERVED1_OFFSET: usize = 0x26;
+pub const USART_TDR_OFFSET: usize = 0x28;
+pub const USART_RESERVED2_OFFSET: usize = 0x2a;
 pub const WWDG_CR_OFFSET: usize = 0x0;
 pub const WWDG_CFR_OFFSET: usize = 0x4;
 pub const WWDG_SR_OFFSET: usize = 0x8;
-
-#[macro_export]
-macro_rules! rd {
-	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident) => {
-		{
-			use paste::paste;
-
-			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
-			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
-			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
-			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
-
-			(*((base + offset) as *const usize) & mask) >> pos
-		}
-	};
-	($group:ident, $($id:literal ,)? $reg:ident) => {
-		{
-			use paste::paste;
-
-			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
-			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
-
-			*((base + offset) as *const usize)
-		}
-	};
-}
-
-#[macro_export]
-macro_rules! wr {
-	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident, $val:expr) => {
-		{
-			use paste::paste;
-
-			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
-			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
-			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
-			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
-			let chunk_reset: usize = *((base + offset) as *mut usize) & !mask;
-
-			*((base + offset) as *mut usize) = chunk_reset | (mask & ($val << pos));
-		}
-	};
-	($group:ident, $($id:literal ,)? $reg:ident, $val:expr) => {
-		{
-			use paste::paste;
-
-			let base: usize = paste!{ [<$group $($id)? _BASE>] };
-			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
-
-			*((base + offset) as *mut usize) = $val;
-		}
-	}
-}

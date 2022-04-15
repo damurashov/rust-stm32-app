@@ -1,12 +1,12 @@
-use crate::{reg, regop, wr};
+use crate::{reg, regop, wr, rd};
 
 pub fn configure() {
 	use reg::*;
 	// The baudrate is calculated based on the assumption that the system clock's frequency is 48 MHz.
-	const SYSTEM_CLOCK_FREQ: usize = 48_000_000;
+	const SYSTEM_CLOCK_FREQ: usize = 32_000_000;
 	const BAUDRATE: usize = 57_600;
 	unsafe {
-		wr!(USART, 1, BRR, BAUDRATE);  // Set baudrate
+		wr!(USART, 1, BRR, SYSTEM_CLOCK_FREQ / BAUDRATE);  // Set baudrate
 		wr!(USART, 1, CR1, RE, 1);  // Usart, enable receiver
 		wr!(USART, 1, CR1, TE, 1);  // Usart, enable transmitter
 		wr!(USART, 1, CR1, UE, 1);  // Usart, enable
@@ -14,18 +14,22 @@ pub fn configure() {
 }
 
 pub fn read(buf: &mut [u8]) {
+	use reg::*;
 	unsafe {
 		for c in buf {
-			while !(regop::read_mask(reg::USART1_BASE + reg::USART_ISR_OFFSET, reg::USART_ISR_RXNE_MSK) != 1) {}  // Wait for the read-ready bit
-			*c = regop::read(reg::USART1_BASE + reg::USART_RDR_OFFSET) as u8;  // Read from the register. Clear the bit as a side effect.
+			while !(rd!(USART, "1", ISR, RXNE) != 1) {}  // Wait for the read-ready bit
+			*c = rd!(USART, "1", RDR) as u8;
 		}
 	}
 }
 
 pub fn write(buf: &[u8]) {
+	use reg::*;
 	unsafe {
 		for c in buf {
-			regop::write((*c).into(), reg::USART1_BASE + reg::USART_TDR_OFFSET);
+			wr!(USART, "1", TDR, *c as usize);
+			while rd!(USART, "1", ISR, TC) != 1 {}  // Wait until written
+			wr!(USART, "1", ICR, TCCF, 1);  // Clear transfer-complete bit
 		}
 	}
 }

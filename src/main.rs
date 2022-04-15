@@ -3,8 +3,8 @@
 #![feature(core_intrinsics)]
 
 mod periph;
-#[macro_use] mod reg;
-mod regop;
+mod reg;
+#[macro_use] mod regop;
 extern crate rust_stm32;
 use core::intrinsics;
 
@@ -24,5 +24,10 @@ fn entry() -> ! {
 	let _data = unsafe {&DATA_VARIABLE};
 	periph::rcc::configure();
 	periph::gpio::configure();
-	loop {}
+	periph::usart::configure();
+
+	let greetings = "Hello";
+	loop {
+		periph::usart::write(greetings.as_bytes());
+	}
 }
