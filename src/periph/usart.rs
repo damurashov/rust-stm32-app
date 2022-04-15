@@ -3,7 +3,7 @@ use crate::{reg, regop, wr, rd};
 pub fn configure() {
 	use reg::*;
 	// The baudrate is calculated based on the assumption that the system clock's frequency is 48 MHz.
-	const SYSTEM_CLOCK_FREQ: usize = 48_000_000;
+	const SYSTEM_CLOCK_FREQ: usize = 32_000_000;
 	const BAUDRATE: usize = 57_600;
 	unsafe {
 		wr!(USART, 1, BRR, SYSTEM_CLOCK_FREQ / BAUDRATE);  // Set baudrate
