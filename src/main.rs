@@ -24,5 +24,10 @@ fn entry() -> ! {
 	let _data = unsafe {&DATA_VARIABLE};
 	periph::rcc::configure();
 	periph::gpio::configure();
-	loop {}
+	periph::usart::configure();
+
+	let greetings = "Hello";
+	loop {
+		periph::usart::write(greetings.as_bytes());
+	}
 }
