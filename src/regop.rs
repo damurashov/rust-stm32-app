@@ -36,3 +36,57 @@ pub unsafe fn read(register: usize) -> usize {
 pub unsafe fn read_mask(register: usize, mask: usize) -> usize {
 	return (*(register as *const usize) & mask) >> mask.trailing_zeros();
 }
+
+
+#[macro_export]
+macro_rules! rd {
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident) => {
+		{
+			use paste::paste;
+
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
+			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
+			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
+			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
+
+			(*((base + offset) as *const usize) & mask) >> pos
+		}
+	};
+	($group:ident, $($id:literal ,)? $reg:ident) => {
+		{
+			use paste::paste;
+
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
+			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
+
+			*((base + offset) as *const usize)
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! wr {
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident, $val:expr) => {
+		{
+			use paste::paste;
+
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
+			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
+			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
+			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
+			let chunk_reset: usize = *((base + offset) as *mut usize) & !mask;
+
+			*((base + offset) as *mut usize) = chunk_reset | (mask & ($val << pos));
+		}
+	};
+	($group:ident, $($id:literal ,)? $reg:ident, $val:expr) => {
+		{
+			use paste::paste;
+
+			let base: usize = paste!{ [<$group $($id)? _BASE>] };
+			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
+
+			*((base + offset) as *mut usize) = $val;
+		}
+	}
+}
