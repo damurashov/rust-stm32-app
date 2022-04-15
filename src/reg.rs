@@ -4078,7 +4078,7 @@ pub const WWDG_SR_OFFSET: usize = 0x8;
 #[macro_export]
 macro_rules! rd {
     ($group:ident, $reg:ident, $fragment:ident) => {
-        unsafe {
+        {
             use crate::reg::*;
 			use paste::paste;
 
@@ -4091,7 +4091,7 @@ macro_rules! rd {
         }
     };
     ($group:ident, $reg:ident) => {
-        unsafe {
+        {
             use crate::reg::*;
 			use paste::paste;
 
