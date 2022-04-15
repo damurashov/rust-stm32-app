@@ -1,14 +1,15 @@
-use crate::{reg, regop};
+use crate::{reg, regop, wr};
 
 pub fn configure() {
+	use reg::*;
 	// The baudrate is calculated based on the assumption that the system clock's frequency is 48 MHz.
 	const SYSTEM_CLOCK_FREQ: usize = 48_000_000;
 	const BAUDRATE: usize = 57_600;
 	unsafe {
-		regop::write(BAUDRATE, reg::USART1_BASE + reg::USART_BRR_OFFSET);  // Set baudrate
-		regop::write_mask(1, reg::USART1_BASE + reg::USART_CR1_OFFSET, reg::USART_CR1_RE_MSK);  // Usart, enable receiver
-		regop::write_mask(1, reg::USART1_BASE + reg::USART_CR1_OFFSET, reg::USART_CR1_TE_MSK);  // Usart, enable transmitter
-		regop::write_mask(1, reg::USART1_BASE + reg::USART_CR1_OFFSET, reg::USART_CR1_UE_MSK);  // Usart, enable
+		wr!(USART, 1, BRR, BAUDRATE);  // Set baudrate
+		wr!(USART, 1, CR1, RE, 1);  // Usart, enable receiver
+		wr!(USART, 1, CR1, TE, 1);  // Usart, enable transmitter
+		wr!(USART, 1, CR1, UE, 1);  // Usart, enable
 	}
 }
 
