@@ -4077,9 +4077,9 @@ pub const WWDG_SR_OFFSET: usize = 0x8;
 
 #[macro_export]
 macro_rules! rd {
-    ($group:ident, $reg:ident, $fragment:ident) => {
-        {
-            use crate::reg::*;
+	($group:ident, $reg:ident, $fragment:ident) => {
+		{
+			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group _ BASE>] };
@@ -4087,27 +4087,27 @@ macro_rules! rd {
 			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
 
-            (*((base + offset) as *const usize) & mask) >> pos
-        }
-    };
-    ($group:ident, $reg:ident) => {
-        {
-            use crate::reg::*;
+			(*((base + offset) as *const usize) & mask) >> pos
+		}
+	};
+	($group:ident, $reg:ident) => {
+		{
+			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
-            *((base + offset) as *const usize)
-        }
-    };
+			*((base + offset) as *const usize)
+		}
+	};
 }
 
 #[macro_export]
 macro_rules! wr {
-    ($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
-        {
-            use crate::reg::*;
+	($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
+		{
+			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group _BASE>] };
@@ -4117,17 +4117,17 @@ macro_rules! wr {
 			let chunk_reset: usize = *((base + offset) as *mut usize) & !mask;
 
 			*((base + offset) as *mut usize) = chunk_reset | (mask & ($val << pos));
-        }
-    };
-    ($group:ident, $reg:ident, $val:expr) => {
-        {
-            use crate::reg::*;
+		}
+	};
+	($group:ident, $reg:ident, $val:expr) => {
+		{
+			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group _BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
 			*((base + offset) as *mut usize) = $val;
-        }
-    }
+		}
+	}
 }
