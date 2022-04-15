@@ -4077,12 +4077,12 @@ pub const WWDG_SR_OFFSET: usize = 0x8;
 
 #[macro_export]
 macro_rules! rd {
-	($group:ident, $reg:ident, $fragment:ident) => {
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident) => {
 		{
 			use crate::reg::*;
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _ BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
@@ -4090,12 +4090,12 @@ macro_rules! rd {
 			(*((base + offset) as *const usize) & mask) >> pos
 		}
 	};
-	($group:ident, $reg:ident) => {
+	($group:ident, $($id:literal ,)? $reg:ident) => {
 		{
 			use crate::reg::*;
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _ BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
 			*((base + offset) as *const usize)
@@ -4105,12 +4105,12 @@ macro_rules! rd {
 
 #[macro_export]
 macro_rules! wr {
-	($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident, $val:expr) => {
 		{
 			use crate::reg::*;
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
@@ -4119,12 +4119,12 @@ macro_rules! wr {
 			*((base + offset) as *mut usize) = chunk_reset | (mask & ($val << pos));
 		}
 	};
-	($group:ident, $reg:ident, $val:expr) => {
+	($group:ident, $($id:literal ,)? $reg:ident, $val:expr) => {
 		{
 			use crate::reg::*;
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
 			*((base + offset) as *mut usize) = $val;
