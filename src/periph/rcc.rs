@@ -1,6 +1,7 @@
 use crate::{wr, rd};
 
 pub fn configure() {
+	use crate::reg::*;
 	unsafe {
 		const ENABLE: usize = 0b1;
 		// RCC_CR

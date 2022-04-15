@@ -4077,57 +4077,53 @@ pub const WWDG_SR_OFFSET: usize = 0x8;
 
 #[macro_export]
 macro_rules! rd {
-    ($group:ident, $reg:ident, $fragment:ident) => {
-        unsafe {
-            use crate::reg::*;
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident) => {
+		{
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _ BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
 
-            (*((base + offset) as *const usize) & mask) >> pos
-        }
-    };
-    ($group:ident, $reg:ident) => {
-        unsafe {
-            use crate::reg::*;
+			(*((base + offset) as *const usize) & mask) >> pos
+		}
+	};
+	($group:ident, $($id:literal ,)? $reg:ident) => {
+		{
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _ BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
-            *((base + offset) as *const usize)
-        }
-    };
+			*((base + offset) as *const usize)
+		}
+	};
 }
 
 #[macro_export]
 macro_rules! wr {
-    ($group:ident, $reg:ident, $fragment:ident, $val:expr) => {
-        {
-            use crate::reg::*;
+	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident, $val:expr) => {
+		{
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 			let mask: usize = paste!{[<$group _ $reg _ $fragment _ MSK>]};
 			let pos: usize = paste!{[<$group _ $reg _ $fragment _ POS>]};
 			let chunk_reset: usize = *((base + offset) as *mut usize) & !mask;
 
 			*((base + offset) as *mut usize) = chunk_reset | (mask & ($val << pos));
-        }
-    };
-    ($group:ident, $reg:ident, $val:expr) => {
-        {
-            use crate::reg::*;
+		}
+	};
+	($group:ident, $($id:literal ,)? $reg:ident, $val:expr) => {
+		{
 			use paste::paste;
 
-			let base: usize = paste!{ [<$group _BASE>] };
+			let base: usize = paste!{ [<$group $($id)? _BASE>] };
 			let offset: usize = paste!{ [<$group _ $reg _ OFFSET>] };
 
 			*((base + offset) as *mut usize) = $val;
-        }
-    }
+		}
+	}
 }
