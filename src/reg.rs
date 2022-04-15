@@ -4079,7 +4079,6 @@ pub const WWDG_SR_OFFSET: usize = 0x8;
 macro_rules! rd {
 	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident) => {
 		{
-			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
@@ -4092,7 +4091,6 @@ macro_rules! rd {
 	};
 	($group:ident, $($id:literal ,)? $reg:ident) => {
 		{
-			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
@@ -4107,7 +4105,6 @@ macro_rules! rd {
 macro_rules! wr {
 	($group:ident, $($id:literal ,)? $reg:ident, $fragment:ident, $val:expr) => {
 		{
-			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group $($id)? _ BASE>] };
@@ -4121,7 +4118,6 @@ macro_rules! wr {
 	};
 	($group:ident, $($id:literal ,)? $reg:ident, $val:expr) => {
 		{
-			use crate::reg::*;
 			use paste::paste;
 
 			let base: usize = paste!{ [<$group $($id)? _BASE>] };
