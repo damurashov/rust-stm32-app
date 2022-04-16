@@ -21,7 +21,7 @@ pub fn configure() {
 		// USART 1
 		regop::write_mask(GPIO_MODER_ALTERNATE_FUNCTION, reg::GPIOA_BASE + reg::GPIO_MODER_OFFSET, reg::GPIO_MODER_MODER2_MSK);  // AF mode, PA2 - TX
 		regop::write_mask(GPIO_MODER_ALTERNATE_FUNCTION, reg::GPIOA_BASE + reg::GPIO_MODER_OFFSET, reg::GPIO_MODER_MODER3_MSK);  // AF mode, PA3 - RX
-		regop::write_mask(PA2_AF_USART1_TX, reg::GPIOA_BASE + reg::GPIO_AFR_OFFSET, reg::GPIO_AFRL_AFRL2_MSK);  // PA2, alternative function # 1
-		regop::write_mask(PA3_AF_USART1_RX, reg::GPIOA_BASE + reg::GPIO_AFR_OFFSET, reg::GPIO_AFRL_AFRL3_MSK);  // PA3, alternative function # 1
+		regop::write_mask(PA2_AF_USART1_TX, reg::GPIOA_BASE + reg::GPIO_AFR_0_OFFSET, reg::GPIO_AFRL_AFRL2_MSK);  // PA2, alternative function # 1
+		regop::write_mask(PA3_AF_USART1_RX, reg::GPIOA_BASE + reg::GPIO_AFR_0_OFFSET, reg::GPIO_AFRL_AFRL3_MSK);  // PA3, alternative function # 1
 	}
 }
