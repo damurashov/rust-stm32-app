@@ -17,6 +17,11 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 	loop{}
 }
 
+#[no_mangle]
+pub fn sys_tick() {
+	loop {}
+}
+
 #[export_name = "main"]
 fn entry() -> ! {
 	let _rodata = RODATA_VARIABLE;
