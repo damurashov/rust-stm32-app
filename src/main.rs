@@ -30,6 +30,7 @@ fn entry() -> ! {
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
+	periph::systick::configure();
 
 	let greetings = "Hello";
 	loop {
