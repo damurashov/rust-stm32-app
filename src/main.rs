@@ -17,9 +17,17 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 	loop{}
 }
 
+static mut COUNTER: u32 = 0;
+
 #[no_mangle]
 pub fn sys_tick() {
-	loop {}
+	unsafe {
+		COUNTER = (COUNTER + 1) % 1000;
+
+		if COUNTER == 0 {
+			periph::usart::write("Hello".as_bytes());
+		}
+	}
 }
 
 #[export_name = "main"]
@@ -32,8 +40,5 @@ fn entry() -> ! {
 	periph::usart::configure();
 	periph::systick::configure();
 
-	let greetings = "Hello";
-	loop {
-		periph::usart::write(greetings.as_bytes());
-	}
+	loop {}
 }
