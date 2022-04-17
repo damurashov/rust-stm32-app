@@ -1,6 +1,6 @@
 extern "C" {
-    fn critical_enter();
-    fn critical_exit();
+    pub fn critical_enter();
+    pub fn critical_exit();
 }
 
 #[macro_export]
