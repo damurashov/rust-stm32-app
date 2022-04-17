@@ -1,6 +1,6 @@
 .syntax unified
-critical_recursive: .word 0
-addr_critical_recursive: .word critical_recursive
+.section .bss.critical_recursive
+critical_recursive: .word 0x0
 
     .section .text.critical_enter
     .global critical_enter
@@ -35,7 +35,7 @@ critical_exit:
     ldr r3, [r2, #0]
     subs r3, r3, #1
     cmp r3, #0
-    beq.n critical_exit_ret
+    bgt critical_exit_ret
     cpsie i
 critical_exit_ret:
      /* Restore previous stack pointer, restore previous stack boundary, update program counter  */
