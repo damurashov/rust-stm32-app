@@ -6,6 +6,7 @@ version = 3
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "paste",
  "rust_stm32",
 ]
