@@ -35,7 +35,7 @@ critical_exit:
     ldr r3, [r2, #0]
     subs r3, r3, #1
     cmp r3, #0
-    bgt critical_exit_ret
+    bgt critical_exit_ret  @ Enable interrupts, if this is the outer level of a nested critical section call chain
     cpsie i
 critical_exit_ret:
      /* Restore previous stack pointer, restore previous stack boundary, update program counter  */
