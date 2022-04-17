@@ -4,7 +4,9 @@
 
 mod periph;
 mod reg;
+#[macro_use] mod sync;
 #[macro_use] mod regop;
+
 extern crate rust_stm32;
 use core::intrinsics;
 
@@ -32,6 +34,8 @@ pub fn sys_tick() {
 
 #[export_name = "main"]
 fn entry() -> ! {
+	use crate::sync::*;
+
 	let _rodata = RODATA_VARIABLE;
 	let _bss = unsafe {&BSS_VARIABLE};
 	let _data = unsafe {&DATA_VARIABLE};
@@ -39,6 +43,12 @@ fn entry() -> ! {
 	periph::gpio::configure();
 	periph::usart::configure();
 	periph::systick::configure();
+
+	let mut a: u32 = 1;
+
+	critical!({
+		a = 42;
+	});
 
 	loop {}
 }
