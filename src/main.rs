@@ -4,6 +4,7 @@
 
 mod periph;
 mod reg;
+#[macro_use] mod sync;
 #[macro_use] mod regop;
 extern crate rust_stm32;
 use core::intrinsics;
