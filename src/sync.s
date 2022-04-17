@@ -15,9 +15,9 @@ critical_enter:
     dsb
     isb
     /* Increase recursive flag */
-    ldr r2, [addr_critical_recursive, #0]
+    ldr r2, =critical_recursive
     ldr r3, [r2, #0]
-    add r3, #1
+    adds r3, r3, #1
     str r3, [r2, #0]
     /* Restore previous stack pointer, restore previous stack boundary, update program counter  */
     mov sp, r7
@@ -31,20 +31,14 @@ critical_exit:
     push {r7, lr}  @ r7 - stack lower boundary, lr - next instruction.
     add r7, sp, #0
     /* Decrease recursive flag */
-    ldr r2, [addr_critical_recursive, #0]
+    ldr r2, =critical_recursive
     ldr r3, [r2, #0]
-    sub r3, r2, #1
+    subs r3, r3, #1
     cmp r3, #0
-    bleq.n goback
+    beq.n critical_exit_ret
     cpsie i
+critical_exit_ret:
      /* Restore previous stack pointer, restore previous stack boundary, update program counter  */
-goback:
+    str r3, [r2, #0]
     mov sp, r7
     pop {r7, pc}
-
-    .section .text.hard_fault_trampoline
-    .global hard_fault_trampoline
-    .type hard_fault_trampoline, %function
-hard_fault_trampoline:
-    mrs r0, MSP /* Load the 1st arg - stack pointer value */
-    b hard_fault /* Proceed w/ the user implementation of hardfault handler, if there's one. See "script.ld" and "lib.rs" */
