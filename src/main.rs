@@ -4,7 +4,7 @@
 
 mod periph;
 mod reg;
-#[macro_use] mod sync;
+#[macro_use] mod thread;
 #[macro_use] mod regop;
 
 extern crate rust_stm32;
@@ -34,7 +34,7 @@ pub fn sys_tick() {
 
 #[export_name = "main"]
 fn entry() -> ! {
-	use crate::sync::*;
+	use crate::thread::sync::*;
 
 	let _rodata = RODATA_VARIABLE;
 	let _bss = unsafe {&BSS_VARIABLE};
