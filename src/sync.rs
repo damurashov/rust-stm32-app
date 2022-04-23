@@ -47,6 +47,12 @@ pub trait Lock {
 	fn check_locked(&self) -> bool;
 }
 
+pub trait LockIsr {
+	fn try_lock(&mut self) -> bool;
+	fn unlock(&mut self);
+	fn check_locked(&self) -> bool;
+}
+
 pub struct Sem {
 	free: u8,
 	max: u8,
@@ -75,8 +81,8 @@ impl Lock for Sem {
 	}
 
 	fn lock(&mut self) {
-		if !self.try_lock() {
-			while !self.try_lock() {
+		if !<Sem as Lock>::try_lock(self) {
+			while !<Sem as Lock>::try_lock(self) {
 				unsafe {
 					asm!{"wfe"};
 				}
@@ -99,5 +105,28 @@ impl Lock for Sem {
 		let _critical = Critical::new();
 
 		self.free == 0
+	}
+}
+
+impl LockIsr for Sem {
+	fn try_lock(&mut self) -> bool {
+		let mut ret = false;
+
+		if self.free < self.max {
+			self.free -= 1;
+			ret = true;
+		}
+
+		ret
+	}
+
+	fn check_locked(&self) -> bool {
+		self.free == 0
+	}
+
+	fn unlock(&mut self) {
+		if self.free < self.max {
+			self.free += 1;
+		}
 	}
 }
