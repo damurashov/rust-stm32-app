@@ -10,6 +10,7 @@ mod mem;
 
 extern crate rust_stm32;
 use core::intrinsics;
+use core::alloc::{Layout, GlobalAlloc};
 
 static RODATA_VARIABLE: &[u8] = b"Rodata";
 static mut BSS_VARIABLE: u32 = 0;
@@ -48,7 +49,7 @@ fn entry() -> ! {
 	let mut a: u32 = 1;
 
 	unsafe {
-		let mut _mem = crate::mem::malloc(42);
+		let mut _mem = crate::mem::ALLOCATOR.alloc(Layout::from_size_align_unchecked(42, 1));
 	}
 
 	critical!({
