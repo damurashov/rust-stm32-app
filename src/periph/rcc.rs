@@ -1,5 +1,9 @@
 use crate::{wr, rd};
 
+pub fn get_clock_frequency() -> usize {
+	32_000_000
+}
+
 pub fn configure() {
 	use crate::reg::*;
 	unsafe {
