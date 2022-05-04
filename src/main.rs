@@ -7,6 +7,7 @@ mod reg;
 #[macro_use] mod thread;
 #[macro_use] mod regop;
 mod mem;
+mod tim;
 
 extern crate rust_stm32;
 use core::intrinsics;
