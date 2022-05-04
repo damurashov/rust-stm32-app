@@ -37,6 +37,5 @@ pub fn configure(resolution_hz: usize) {
 		wr!(TIM, "14", CR1, UDIS, 0);  // Do not disable UEV generation. So on counter overflow or UG bit setting, a UEV will be generated, and the timer's counter will be reset
 		wr!(TIM, "14", DIER, UIE, 1);  // Enable interrupt on UIE
 		wr!(NVIC, ISER_0, 0x1 << 19);  // Enable Interrupt #19 (TIM 14 IRQ)
-		wr!(TIM, "14", EGR, UG, 1);  // Trigger UEV event to reset the counter
 	}
 }
