@@ -21,6 +21,11 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 	loop{}
 }
 
+#[no_mangle]
+pub fn tim14_irq() {
+	loop {}
+}
+
 static mut COUNTER: u32 = 0;
 
 #[no_mangle]
@@ -45,6 +50,8 @@ fn entry() -> ! {
 	periph::gpio::configure();
 	periph::usart::configure();
 	periph::systick::configure();
+	periph::tim14::configure(100000);
+	periph::tim14::set_timeout(10000);
 
 	let mut a: u32 = 1;
 
