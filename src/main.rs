@@ -7,6 +7,7 @@ mod reg;
 #[macro_use] mod thread;
 #[macro_use] mod regop;
 mod mem;
+mod tim;
 
 extern crate rust_stm32;
 use core::intrinsics;
@@ -23,7 +24,12 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 
 #[no_mangle]
 pub fn tim14_irq() {
-	loop {}
+	use reg::*;
+	use crate::wr;
+	unsafe {
+		wr!(TIM, "14", SR, UIF, 0);  // Clear interrupt flag, so it will not request interrupts indefinitely
+	}
+	periph::usart::write("Hello".as_bytes());
 }
 
 static mut COUNTER: u32 = 0;
@@ -31,11 +37,7 @@ static mut COUNTER: u32 = 0;
 #[no_mangle]
 pub fn sys_tick() {
 	unsafe {
-		COUNTER = (COUNTER + 1) % 1000;
-
-		if COUNTER == 0 {
-			periph::usart::write("Hello".as_bytes());
-		}
+		COUNTER += 1;
 	}
 }
 
@@ -50,8 +52,10 @@ fn entry() -> ! {
 	periph::gpio::configure();
 	periph::usart::configure();
 	periph::systick::configure();
-	periph::tim14::configure(100000);
-	periph::tim14::set_timeout(10000);
+
+	const TIM14_RESOLUTION_HZ: usize = 500;
+	periph::tim14::configure(TIM14_RESOLUTION_HZ);
+	periph::tim14::set_timeout(tim::Duration::Seconds(1));
 
 	let mut a: u32 = 1;
 

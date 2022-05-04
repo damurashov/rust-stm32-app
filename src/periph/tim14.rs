@@ -1,10 +1,15 @@
-use crate::{wr, periph::rcc, reg::*};
+use crate::{wr, periph::rcc, reg::*, tim};
 
 static mut RESOLUTION : usize = 0;
 
-pub fn set_timeout(microseconds: usize) {
+pub fn set_timeout(duration: tim::Duration) {
 	unsafe {
-		let arr = RESOLUTION * microseconds / 1_000_000;
+		let arr = match duration {
+			tim::Duration::Microseconds(d) => RESOLUTION * d / 1_000_000,
+			tim::Duration::Milliseconds(d) => RESOLUTION * d / 1_000,
+			tim::Duration::Seconds(d) => RESOLUTION * d
+		};
+
 		wr!(TIM, "14", ARR, ARR, arr);  // Update the auto-reload register
 		wr!(TIM, "14", EGR, UG, 1);  // Trigger UEV event to reset the counter
 		wr!(TIM, "14", CR1, CEN, 1);  // Counter ENable
@@ -32,6 +37,5 @@ pub fn configure(resolution_hz: usize) {
 		wr!(TIM, "14", CR1, UDIS, 0);  // Do not disable UEV generation. So on counter overflow or UG bit setting, a UEV will be generated, and the timer's counter will be reset
 		wr!(TIM, "14", DIER, UIE, 1);  // Enable interrupt on UIE
 		wr!(NVIC, ISER_0, 0x1 << 19);  // Enable Interrupt #19 (TIM 14 IRQ)
-		wr!(TIM, "14", EGR, UG, 1);  // Trigger UEV event to reset the counter
 	}
 }
