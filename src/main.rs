@@ -23,11 +23,22 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 }
 
 #[no_mangle]
+pub fn pend_sv() {
+	use reg::*;
+	use crate::wr;
+
+	unsafe {
+		wr!(SCB, ICSR, PENDSVCLR, 1);  // Clear PendSV pending interrupt bit
+	}
+}
+
+#[no_mangle]
 pub fn tim14_irq() {
 	use reg::*;
 	use crate::wr;
 	unsafe {
 		wr!(TIM, "14", SR, UIF, 0);  // Clear interrupt flag, so it will not request interrupts indefinitely
+        wr!(SCB, ICSR, PENDSVSET, 1);  // Trigger PendSV interrupt for context switching
 	}
 	periph::usart::write("Hello".as_bytes());
 }
@@ -55,7 +66,7 @@ fn entry() -> ! {
 
 	const TIM14_RESOLUTION_HZ: usize = 500;
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
-	periph::tim14::set_timeout(tim::Duration::Seconds(1));
+	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
 
 	let mut a: u32 = 1;
 
