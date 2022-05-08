@@ -24,7 +24,7 @@ macro_rules! critical {
 pub struct Critical {}
 
 impl Critical {
-	fn new() -> Critical {
+	pub fn new() -> Critical {
 		unsafe {
 			critical_enter();
 		}
