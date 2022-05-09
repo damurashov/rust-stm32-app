@@ -113,7 +113,7 @@ impl Task {
 		unsafe {
 			let mut task = Task::new();
 			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
-			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(core::mem::size_of::<StackFrame>(), 4).unwrap()) as *mut StackFrame;
+			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::new::<StackFrame>()) as *mut StackFrame;
 
 			if !task.is_alloc() {
 				return Err(TaskError::Alloc)
