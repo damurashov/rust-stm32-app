@@ -38,52 +38,44 @@ mod registry {
 
 	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
 
-	pub fn add(task: &Task) -> Result<(), TaskError> {
-		unsafe {
-			for mut t in REGISTRY {
-				if t.is_null() {
-					t = task;
+	pub unsafe fn add(task: &Task) -> Result<(), TaskError> {
+		for mut t in REGISTRY {
+			if t.is_null() {
+				t = task;
 
-					return Ok(())
-				}
+				return Ok(())
 			}
 		}
 
 		Err(TaskError::MaxNtasks(TASKS_MAX))
 	}
 
-	fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
-		unsafe {
-			for mut t in REGISTRY {
-				if task == t {
-					return Ok(&mut t)
-				}
+	unsafe fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
+		for mut t in REGISTRY {
+			if task == t {
+				return Ok(&mut t)
 			}
 		}
 
 		Err(TaskError::NotFound)
 	}
 
-	pub fn remove(task: &Task) -> Result<(), TaskError> {
+	pub unsafe fn remove(task: &Task) -> Result<(), TaskError> {
 		let mut registry_entry = find(task)?;
 
-		unsafe {
-			*registry_entry = 0 as *const Task;
-		}
+		*registry_entry = 0 as *const Task;
 
 		Ok(())
 	}
 
-	pub fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
-		unsafe {
-			for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
-				let task = REGISTRY[id % TASKS_MAX];
+	pub unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
+		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
+			let task = REGISTRY[id % TASKS_MAX];
 
-				if !task.is_null() {
-					STATE.current_id = id % TASKS_MAX;
+			if !task.is_null() {
+				STATE.current_id = id % TASKS_MAX;
 
-					return Ok(&*task);
-				}
+				return Ok(&*task);
 			}
 		}
 
@@ -143,6 +135,6 @@ impl Task {
 impl core::ops::Drop for Task {
 	fn drop(&mut self) {
 		let _critical = sync::Critical::new();
-		registry::remove(&self);
+		unsafe {registry::remove(&self)};
 	}
 }
