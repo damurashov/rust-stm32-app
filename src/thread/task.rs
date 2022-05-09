@@ -131,3 +131,10 @@ impl Task {
 		(self.runner)();
 	}
 }
+
+impl core::ops::Drop for Task {
+	fn drop(&mut self) {
+		let _critical = sync::Critical::new();
+		registry::remove(&self);
+	}
+}
