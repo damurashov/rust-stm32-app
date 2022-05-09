@@ -119,6 +119,8 @@ impl Task {
 				return Err(TaskError::Alloc)
 			}
 
+			registry::add(&task);
+
 			Ok(task)
 		}
 	}
