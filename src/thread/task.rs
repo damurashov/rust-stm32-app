@@ -6,7 +6,8 @@ type StackFrame = [u32; 19];
 
 pub enum TaskError {
 	Alloc(usize),  // Could not allocate the memory
-	MaxNtasks(usize)  // The max. allowed number of tasks has been exceeded
+	MaxNtasks(usize),  // The max. allowed number of tasks has been exceeded
+	NotFound,
 }
 
 #[derive(Clone)]
@@ -23,25 +24,70 @@ extern "C" {
 
 mod registry {
 	use super::{Task, StackFrame, TaskError};
-	const TASKS_MAX: usize = 2;
 
+	const TASKS_MAX: usize = 2;
 	static mut REGISTRY: [*const Task; TASKS_MAX] = [
 		0 as *const Task,
 		0 as *const Task,
 	];
 
+	struct State {
+		current_id: usize,
+		free: usize,
+	}
+
+	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
+
 	pub fn add(task: &Task) -> Result<(), TaskError> {
 		unsafe {
 			for mut t in REGISTRY {
-				if 0 == t as usize {
+				if t.is_null() {
 					t = task;
 
-					return Ok(());
+					return Ok(())
 				}
 			}
 		}
 
 		Err(TaskError::MaxNtasks(TASKS_MAX))
+	}
+
+	fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
+		unsafe {
+			for mut t in REGISTRY {
+				if task == t {
+					return Ok(&mut t)
+				}
+			}
+		}
+
+		Err(TaskError::NotFound)
+	}
+
+	pub fn remove(task: &Task) -> Result<(), TaskError> {
+		let mut registry_entry = find(task)?;
+
+		unsafe {
+			*registry_entry = 0 as *const Task;
+		}
+
+		Ok(())
+	}
+
+	pub fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
+		unsafe {
+			for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
+				let task = REGISTRY[id % TASKS_MAX];
+
+				if !task.is_null() {
+					STATE.current_id = id % TASKS_MAX;
+
+					return Ok(&*task);
+				}
+			}
+		}
+
+		Err(TaskError::NotFound)
 	}
 }
 
