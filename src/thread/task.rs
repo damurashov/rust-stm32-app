@@ -91,6 +91,14 @@ mod registry {
 	}
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn task_get_next_stack_frame() -> *mut u8 {
+	match registry::get_next_round_robin() {
+		Err(_) => core::ptr::null_mut(),
+		Ok(task) => task.stack_frame as *mut u8,
+	}
+}
+
 impl Task {
 	fn runner_wrap(id: usize) {
 	}
