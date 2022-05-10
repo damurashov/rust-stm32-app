@@ -67,6 +67,7 @@ fn entry() -> ! {
 	const TIM14_RESOLUTION_HZ: usize = 500;
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
+	periph::pendsv::configure();
 
 	let mut a: u32 = 1;
 
