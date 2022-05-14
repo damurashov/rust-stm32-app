@@ -23,16 +23,6 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 }
 
 #[no_mangle]
-pub fn pend_sv() {
-	use reg::*;
-	use crate::wr;
-
-	unsafe {
-		wr!(SCB, ICSR, PENDSVCLR, 1);  // Clear PendSV pending interrupt bit
-	}
-}
-
-#[no_mangle]
 pub fn tim14_irq() {
 	use reg::*;
 	use crate::wr;
