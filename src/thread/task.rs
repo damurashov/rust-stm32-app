@@ -96,7 +96,7 @@ mod registry {
 /// is no next task
 ///
 #[no_mangle]
-pub unsafe extern "C" fn get_stack_frame_next() -> *mut u8 {
+unsafe extern "C" fn get_stack_frame_next() -> *mut u8 {
 	match registry::get_next_round_robin() {
 		Err(_) => core::ptr::null_mut(),
 		Ok(task) => task.stack_frame as *mut u8,
@@ -107,14 +107,12 @@ pub unsafe extern "C" fn get_stack_frame_next() -> *mut u8 {
 /// no ongoing tasks were found.
 ///
 #[no_mangle]
-pub unsafe extern "C" fn get_stack_frame_current() -> *mut u8 {
+unsafe extern "C" fn get_stack_frame_current() -> *mut u8 {
 	match registry::get_current() {
 		Err(_) => core::ptr::null_mut(),
 		Ok(task) => task.stack_frame as *mut u8,
 	}
 }
-
-// pub unsafe extern "C" fn task_get_current_stack_frame() -> *mut u8
 
 impl Task {
 	fn runner_wrap(id: usize) {
