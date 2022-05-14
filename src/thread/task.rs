@@ -81,15 +81,40 @@ mod registry {
 
 		Err(TaskError::NotFound)
 	}
+
+	pub unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
+		let task = REGISTRY[STATE.current_id % TASKS_MAX];
+
+		match task.is_null() {
+			true => Ok(&*task),
+			false => Err(TaskError::NotFound),
+		}
+	}
 }
 
+/// Wrapper to be called from the assembly task switching module. Returns the pointer to a next stack frame. 0, if there
+/// is no next task
+///
 #[no_mangle]
-pub unsafe extern "C" fn task_get_next_stack_frame() -> *mut u8 {
+pub unsafe extern "C" fn get_stack_frame_next() -> *mut u8 {
 	match registry::get_next_round_robin() {
 		Err(_) => core::ptr::null_mut(),
 		Ok(task) => task.stack_frame as *mut u8,
 	}
 }
+
+/// Wrapper to be called from the assembly task switching module. Returns the pointer to the current stack frame. 0, if
+/// no ongoing tasks were found.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_stack_frame_current() -> *mut u8 {
+	match registry::get_current() {
+		Err(_) => core::ptr::null_mut(),
+		Ok(task) => task.stack_frame as *mut u8,
+	}
+}
+
+// pub unsafe extern "C" fn task_get_current_stack_frame() -> *mut u8
 
 impl Task {
 	fn runner_wrap(id: usize) {
