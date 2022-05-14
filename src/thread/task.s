@@ -22,5 +22,26 @@ pend_sv:
 	lsls r2, #27
 	orrs r3, r2
 	str r3, [r1]
+	/* Store current registers */
+	push {r4-r7}
+	mov r1, r8
+	push {r1}
+	mov r1, r9
+	push {r1}
+	mov r1, r10
+	push {r1}
+	mov r1, r11
+	push {r1}
+	/* Restore current registers */
+	pop {r4-r7}
+	pop {r1}
+	mov r11, r1
+	pop {r1}
+	mov r10, r1
+	pop {r1}
+	mov r9, r1
+	pop {r1}
+	mov r8, r1
+	pop {r4-r7}
 	/* Pop EXC_RETURN, thus endicating end of handler routine */
 	pop {pc}
