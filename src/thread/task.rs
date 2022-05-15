@@ -114,6 +114,15 @@ unsafe extern "C" fn get_stack_frame_current() -> *mut u8 {
 	}
 }
 
+/// Part of task-switching ISR.
+///
+/// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching to
+/// the ISR) into the current task's context storage, and loads the context of a next task
+///
+#[no_mangle]
+unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
+}
+
 impl Task {
 	fn runner_wrap(id: usize) {
 	}
