@@ -17,11 +17,11 @@ pub struct Task {
 	stack_frame: *mut StackFrame,
 }
 
-mod registry {
+mod queue {
 	use super::{Task, StackFrame, TaskError};
 
 	const TASKS_MAX: usize = 2;
-	static mut REGISTRY: [*const Task; TASKS_MAX] = [
+	static mut QUEUE: [*const Task; TASKS_MAX] = [
 		0 as *const Task,
 		0 as *const Task,
 	];
@@ -34,7 +34,7 @@ mod registry {
 	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
 
 	pub unsafe fn add(task: &Task) -> Result<(), TaskError> {
-		for mut t in REGISTRY {
+		for mut t in QUEUE {
 			if t.is_null() {
 				t = task;
 
@@ -46,7 +46,7 @@ mod registry {
 	}
 
 	unsafe fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
-		for mut t in REGISTRY {
+		for mut t in QUEUE {
 			if task == t {
 				return Ok(&mut t)
 			}
@@ -56,16 +56,16 @@ mod registry {
 	}
 
 	pub unsafe fn remove(task: &Task) -> Result<(), TaskError> {
-		let mut registry_entry = find(task)?;
+		let mut queue_entry = find(task)?;
 
-		*registry_entry = 0 as *const Task;
+		*queue_entry = 0 as *const Task;
 
 		Ok(())
 	}
 
 	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
 		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
-			let task = REGISTRY[id % TASKS_MAX];
+			let task = QUEUE[id % TASKS_MAX];
 
 			if !task.is_null() {
 				STATE.current_id = id % TASKS_MAX;
@@ -78,7 +78,7 @@ mod registry {
 	}
 
 	unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
-		let task = REGISTRY[STATE.current_id % TASKS_MAX];
+		let task = QUEUE[STATE.current_id % TASKS_MAX];
 
 		match task.is_null() {
 			true => Ok(&*task),
@@ -165,6 +165,6 @@ impl Task {
 impl core::ops::Drop for Task {
 	fn drop(&mut self) {
 		let _critical = sync::Critical::new();
-		unsafe {registry::remove(&self)};
+		unsafe {queue::remove(&self)};
 	}
 }
