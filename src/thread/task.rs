@@ -39,6 +39,7 @@ pub struct Task {
 	runner: Runner,
 	stack_begin: *mut u8,
 	stack_frame: *mut StackFrame,
+	id: usize,
 }
 
 mod queue {
