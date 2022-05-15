@@ -92,28 +92,6 @@ mod registry {
 	}
 }
 
-/// Wrapper to be called from the assembly task switching module. Returns the pointer to a next stack frame. 0, if there
-/// is no next task
-///
-#[no_mangle]
-unsafe extern "C" fn get_stack_frame_next() -> *mut u8 {
-	match registry::get_next_round_robin() {
-		Err(_) => core::ptr::null_mut(),
-		Ok(task) => task.stack_frame as *mut u8,
-	}
-}
-
-/// Wrapper to be called from the assembly task switching module. Returns the pointer to the current stack frame. 0, if
-/// no ongoing tasks were found.
-///
-#[no_mangle]
-unsafe extern "C" fn get_stack_frame_current() -> *mut u8 {
-	match registry::get_current() {
-		Err(_) => core::ptr::null_mut(),
-		Ok(task) => task.stack_frame as *mut u8,
-	}
-}
-
 /// Part of task-switching ISR.
 ///
 /// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching to
