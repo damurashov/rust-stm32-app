@@ -3,7 +3,7 @@ use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut};
 
 pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [u32; 16];
+type StackFrame = [usize; 16];
 
 // Warning: must be synchronized with `sync.s`. Note that when changing layout
 /// Stores offsets of certains registers in `StackFrame`
@@ -15,7 +15,7 @@ enum StackFrameLayout {
 }
 
 impl Index<StackFrameLayout> for StackFrame {
-	type Output = u32;
+	type Output = usize;
 
 	fn index(&self, sfl: StackFrameLayout) -> &Self::Output {
 		&self[sfl as usize]
