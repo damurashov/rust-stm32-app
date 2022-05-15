@@ -1,8 +1,5 @@
 .syntax unified
 
-.global get_stack_frame_next
-.global get_stack_frame_current
-
 /* Info for clearing PendSV "interrupt pending" bit */
 _scb_icsr_address: .word 0xE000ED04
 _scb_icsr_pendsvclr: .word (1 << 27)
@@ -32,6 +29,10 @@ pend_sv:
 	push {r1}
 	mov r1, r11
 	push {r1}
+	/* Switch context */
+	mrs r0, PSP
+	mrs r1, MSP
+	b stack_frame_swap_next
 	/* Restore current registers */
 	pop {r4-r7}
 	pop {r1}
