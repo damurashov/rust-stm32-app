@@ -1,8 +1,32 @@
 use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
+use core::ops::{Index, IndexMut};
 
 pub type Runner = &'static dyn Fn() -> ();
 type StackFrame = [u32; 16];
+
+// Warning: must be synchronized with `sync.s`. Note that when changing layout
+/// Stores offsets of certains registers in `StackFrame`
+///
+enum StackFrameLayout {
+	R0 = 8,
+	Sp = 12,
+	Pc = 14,
+}
+
+impl Index<StackFrameLayout> for StackFrame {
+	type Output = u32;
+
+	fn index(&self, sfl: StackFrameLayout) -> &Self::Output {
+		&self[sfl as usize]
+	}
+}
+
+impl IndexMut<StackFrameLayout> for StackFrame {
+	fn index_mut(&mut self, sfl: StackFrameLayout) -> &mut Self::Output {
+		&mut self[sfl as usize]
+	}
+}
 
 pub enum TaskError {
 	Alloc,  // Could not allocate the memory
