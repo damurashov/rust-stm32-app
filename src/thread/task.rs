@@ -92,7 +92,7 @@ mod registry {
 	}
 }
 
-/// Part of task-switching ISR.
+/// Part of the task-switching ISR.
 ///
 /// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching to
 /// the ISR) into the current task's context storage, and loads the context of a next task
