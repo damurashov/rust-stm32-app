@@ -151,10 +151,17 @@ mod queue {
 	}
 }
 
-
 impl Task {
 	#[no_mangle]
-	extern "C" fn runner_wrap(id: usize) {
+	extern "C" fn runner_wrap(task: &mut Task) {
+		(task.runner)();
+
+		unsafe {
+			let _critical = sync::Critical::new();
+			queue::remove(task);
+		}
+
+		loop {}  // Trap until the task gets dequeued by the scheduler
 	}
 
 	fn new() -> Task {
