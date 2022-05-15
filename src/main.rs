@@ -23,16 +23,6 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 }
 
 #[no_mangle]
-pub fn pend_sv() {
-	use reg::*;
-	use crate::wr;
-
-	unsafe {
-		wr!(SCB, ICSR, PENDSVCLR, 1);  // Clear PendSV pending interrupt bit
-	}
-}
-
-#[no_mangle]
 pub fn tim14_irq() {
 	use reg::*;
 	use crate::wr;
@@ -54,8 +44,6 @@ pub fn sys_tick() {
 
 #[export_name = "main"]
 fn entry() -> ! {
-	use crate::thread::sync::*;
-
 	let _rodata = RODATA_VARIABLE;
 	let _bss = unsafe {&BSS_VARIABLE};
 	let _data = unsafe {&DATA_VARIABLE};
@@ -63,21 +51,11 @@ fn entry() -> ! {
 	periph::gpio::configure();
 	periph::usart::configure();
 	periph::systick::configure();
+	periph::pendsv::configure();
 
 	const TIM14_RESOLUTION_HZ: usize = 500;
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
-	periph::pendsv::configure();
-
-	let mut a: u32 = 1;
-
-	unsafe {
-		let mut _mem = crate::mem::ALLOCATOR.alloc(Layout::from_size_align_unchecked(42, 1));
-	}
-
-	critical!({
-		a = 42;
-	});
 
 	loop {}
 }
