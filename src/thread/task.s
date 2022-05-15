@@ -9,7 +9,7 @@ _scb_icsr_pendsvclr: .word (1 << 27)
 	.type pend_sv, %function
 /* Handles task switching, relying partially on Rust-provided wrappers over task-managing code */
 pend_sv:
-	/* The LD contains EXC_RETURN */
+	/* The lr contains EXC_RETURN */
 	push {lr}
 	/* Disable "interrupt pending" bit (by setting "clear pending") */
 	ldr r1, =_scb_icsr_address
