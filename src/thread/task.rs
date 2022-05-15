@@ -2,7 +2,7 @@ use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 
 pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [u32; 19];
+type StackFrame = [u32; 16];
 
 pub enum TaskError {
 	Alloc,  // Could not allocate the memory
