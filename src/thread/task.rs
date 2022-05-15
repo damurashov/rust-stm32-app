@@ -158,7 +158,13 @@ impl Task {
 	}
 
 	fn new() -> Task {
-		return Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0}
+		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
+
+		for mut t in unsafe{*task.stack_frame} {
+			t = 0;
+		}
+
+		task
 	}
 
 	/// Checks whether memory for the task has been allocated successfully
