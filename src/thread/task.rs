@@ -148,7 +148,8 @@ mod queue {
 
 
 impl Task {
-	fn runner_wrap(id: usize) {
+	#[no_mangle]
+	extern "C" fn runner_wrap(id: usize) {
 	}
 
 	fn new() -> Task {
@@ -174,6 +175,9 @@ impl Task {
 			if !task.is_alloc() {
 				return Err(TaskError::Alloc)
 			}
+
+			(*task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			(*task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize;
 
 			Ok(task)
 		}
