@@ -61,9 +61,9 @@ mod queue {
 	pub unsafe fn add(task: &mut Task) -> Result<(), TaskError> {
 		task.id = 0;
 
-		for mut t in QUEUE {
+		for t in &mut QUEUE {
 			if t.is_null() {
-				t = task;
+				*t = task as *const Task;
 
 				return Ok(())
 			}
