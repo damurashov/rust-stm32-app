@@ -32,7 +32,7 @@ pend_sv:
 	/* Switch context */
 	mrs r0, PSP
 	mrs r1, MSP
-	b stack_frame_swap_next
+	bl stack_frame_swap_next
 	/* Restore current registers */
 	pop {r1}
 	mov r11, r1
