@@ -93,8 +93,11 @@ mod registry {
 
 	/// Part of the task-switching ISR.
 	///
-	/// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching to
-	/// the ISR) into the current task's context storage, and loads the context of a next task.
+	/// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching
+	/// to the ISR) into the current task's context storage, and loads the context of a next task.
+	///
+	/// 2 chunks are used intead of 1, because Cortex-M0 does not save all the registers in one place, and it is easier
+	/// to store the rest of them separately due to limitations of the instructions available.
 	///
 	#[no_mangle]
 	unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
