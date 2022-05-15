@@ -203,11 +203,13 @@ impl Task {
 
 	/// Enqueues the task for context switching
 	///
-	pub fn start(&mut self) {
+	pub fn start(&mut self) -> Result<(), TaskError> {
 		unsafe {
 			let _critical = sync::Critical::new();
-			queue::add(self);
+			queue::add(self)?;
 			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
+
+			Ok(())
 		}
 	}
 }
