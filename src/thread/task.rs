@@ -17,11 +17,6 @@ pub struct Task {
 	stack_frame: *mut StackFrame,
 }
 
-extern "C" {
-	fn task_state_save(mem_into: *const u8);
-	fn task_state_load(mem_from: *const u8);
-}
-
 mod registry {
 	use super::{Task, StackFrame, TaskError};
 
