@@ -58,13 +58,17 @@ mod queue {
 
 	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
 
-	pub unsafe fn add(task: &Task) -> Result<(), TaskError> {
+	pub unsafe fn add(task: &mut Task) -> Result<(), TaskError> {
+		task.id = 0;
+
 		for mut t in QUEUE {
 			if t.is_null() {
 				t = task;
 
 				return Ok(())
 			}
+
+			task.id += 1;
 		}
 
 		Err(TaskError::MaxNtasks(TASKS_MAX))
@@ -154,7 +158,7 @@ impl Task {
 	}
 
 	fn new() -> Task {
-		return Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame}
+		return Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0}
 	}
 
 	/// Checks whether memory for the task has been allocated successfully
