@@ -34,7 +34,6 @@ pend_sv:
 	mrs r1, MSP
 	b stack_frame_swap_next
 	/* Restore current registers */
-	pop {r4-r7}
 	pop {r1}
 	mov r11, r1
 	pop {r1}
