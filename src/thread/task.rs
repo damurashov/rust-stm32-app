@@ -63,7 +63,7 @@ mod registry {
 		Ok(())
 	}
 
-	pub unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
+	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
 		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
 			let task = REGISTRY[id % TASKS_MAX];
 
@@ -77,7 +77,7 @@ mod registry {
 		Err(TaskError::NotFound)
 	}
 
-	pub unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
+	unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
 		let task = REGISTRY[STATE.current_id % TASKS_MAX];
 
 		match task.is_null() {
