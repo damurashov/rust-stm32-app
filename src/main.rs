@@ -44,9 +44,6 @@ pub fn sys_tick() {
 
 #[export_name = "main"]
 fn entry() -> ! {
-	let _rodata = RODATA_VARIABLE;
-	let _bss = unsafe {&BSS_VARIABLE};
-	let _data = unsafe {&DATA_VARIABLE};
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
