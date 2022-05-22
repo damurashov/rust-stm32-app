@@ -1,8 +1,32 @@
 use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
+use core::ops::{Index, IndexMut};
 
 pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [u32; 16];
+type StackFrame = [usize; 16];
+
+// Warning: must be synchronized with `sync.s`. Note that when changing layout
+/// Stores offsets of certains registers in `StackFrame`
+///
+enum StackFrameLayout {
+	R0 = 8,
+	Sp = 12,
+	Pc = 14,
+}
+
+impl Index<StackFrameLayout> for StackFrame {
+	type Output = usize;
+
+	fn index(&self, sfl: StackFrameLayout) -> &Self::Output {
+		&self[sfl as usize]
+	}
+}
+
+impl IndexMut<StackFrameLayout> for StackFrame {
+	fn index_mut(&mut self, sfl: StackFrameLayout) -> &mut Self::Output {
+		&mut self[sfl as usize]
+	}
+}
 
 pub enum TaskError {
 	Alloc,  // Could not allocate the memory
@@ -15,13 +39,14 @@ pub struct Task {
 	runner: Runner,
 	stack_begin: *mut u8,
 	stack_frame: *mut StackFrame,
+	id: usize,
 }
 
-mod registry {
+mod queue {
 	use super::{Task, StackFrame, TaskError};
 
 	const TASKS_MAX: usize = 2;
-	static mut REGISTRY: [*const Task; TASKS_MAX] = [
+	static mut QUEUE: [*const Task; TASKS_MAX] = [
 		0 as *const Task,
 		0 as *const Task,
 	];
@@ -33,20 +58,24 @@ mod registry {
 
 	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
 
-	pub unsafe fn add(task: &Task) -> Result<(), TaskError> {
-		for mut t in REGISTRY {
+	pub unsafe fn add(task: &mut Task) -> Result<(), TaskError> {
+		task.id = 0;
+
+		for t in &mut QUEUE {
 			if t.is_null() {
-				t = task;
+				*t = task as *const Task;
 
 				return Ok(())
 			}
+
+			task.id += 1;
 		}
 
 		Err(TaskError::MaxNtasks(TASKS_MAX))
 	}
 
 	unsafe fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
-		for mut t in REGISTRY {
+		for mut t in QUEUE {
 			if task == t {
 				return Ok(&mut t)
 			}
@@ -56,16 +85,16 @@ mod registry {
 	}
 
 	pub unsafe fn remove(task: &Task) -> Result<(), TaskError> {
-		let mut registry_entry = find(task)?;
+		let mut queue_entry = find(task)?;
 
-		*registry_entry = 0 as *const Task;
+		*queue_entry = 0 as *const Task;
 
 		Ok(())
 	}
 
-	pub unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
+	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
 		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
-			let task = REGISTRY[id % TASKS_MAX];
+			let task = QUEUE[id % TASKS_MAX];
 
 			if !task.is_null() {
 				STATE.current_id = id % TASKS_MAX;
@@ -77,8 +106,8 @@ mod registry {
 		Err(TaskError::NotFound)
 	}
 
-	pub unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
-		let task = REGISTRY[STATE.current_id % TASKS_MAX];
+	unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
+		let task = QUEUE[STATE.current_id % TASKS_MAX];
 
 		match task.is_null() {
 			true => Ok(&*task),
@@ -122,13 +151,27 @@ mod registry {
 	}
 }
 
-
 impl Task {
-	fn runner_wrap(id: usize) {
+	#[no_mangle]
+	extern "C" fn runner_wrap(task: &mut Task) {
+		(task.runner)();
+
+		unsafe {
+			let _critical = sync::Critical::new();
+			queue::remove(task);
+		}
+
+		loop {}  // Trap until the task gets dequeued by the scheduler
 	}
 
 	fn new() -> Task {
-		return Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame}
+		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
+
+		for mut t in unsafe{*task.stack_frame} {
+			t = 0;
+		}
+
+		task
 	}
 
 	/// Checks whether memory for the task has been allocated successfully
@@ -151,7 +194,8 @@ impl Task {
 				return Err(TaskError::Alloc)
 			}
 
-			registry::add(&task);
+			(*task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			(*task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
 
 			Ok(task)
 		}
@@ -159,14 +203,20 @@ impl Task {
 
 	/// Enqueues the task for context switching
 	///
-	pub fn start(&self) {
-		(self.runner)();
+	pub fn start(&mut self) -> Result<(), TaskError> {
+		unsafe {
+			let _critical = sync::Critical::new();
+			queue::add(self)?;
+			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
+
+			Ok(())
+		}
 	}
 }
 
 impl core::ops::Drop for Task {
 	fn drop(&mut self) {
 		let _critical = sync::Critical::new();
-		unsafe {registry::remove(&self)};
+		unsafe {queue::remove(&self)};
 	}
 }

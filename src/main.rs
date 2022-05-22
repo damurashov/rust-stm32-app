@@ -42,11 +42,14 @@ pub fn sys_tick() {
 	}
 }
 
+fn task() {
+	loop {
+		periph::usart::write("I am a task".as_bytes());
+	}
+}
+
 #[export_name = "main"]
 fn entry() -> ! {
-	let _rodata = RODATA_VARIABLE;
-	let _bss = unsafe {&BSS_VARIABLE};
-	let _data = unsafe {&DATA_VARIABLE};
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
@@ -56,6 +59,12 @@ fn entry() -> ! {
 	const TIM14_RESOLUTION_HZ: usize = 500;
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
+
+	let mut task1 = thread::task::Task::from_stack_size(&task, 512);
+
+	if let Ok(mut t) = task1 {
+		t.start();
+	}
 
 	loop {}
 }
