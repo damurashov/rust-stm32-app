@@ -1,4 +1,5 @@
 [target.thumbv6m-none-eabi]
+rustflags = ["-C", "link-arg=-Tscript.ld"]
 linker = "arm-none-eabi-gcc"
 ar = "arm-none-eabi-ar"
 
