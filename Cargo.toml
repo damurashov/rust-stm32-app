@@ -7,6 +7,12 @@ edition = "2021"
 [build-dependencies]
 cc = "1.0.73"
 
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+opt-level = "s"
+
 [dependencies]
 paste = "1.0.7"
 rust_stm32 = {path = "../rust_stm32"}
