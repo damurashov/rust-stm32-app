@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-link-arg=-Os");
     println!("cargo:rustc-link-arg=-Wl,-lc_nano");
     println!("cargo:rustc-link-arg=-Wl,-lnosys");
-    println!("cargo:rustc-link-arg=-Wl,-specs=nano.specs");
+    // println!("cargo:rustc-link-arg=-Wl,-specs=nano.specs");
     // println!("cargo:rustc-link-arg=-Wl,-specs=nosys.specs");
     println!("cargo:rustc-link-arg=-Wl,--gc-sections");
 
