@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("cargo:rustc-link-arg=-mcpu=cortex-m0");
     println!("cargo:rustc-link-arg=-mthumb");
-    println!("cargo:rustc-link-arg=-Tscript.ld");
+    println!("cargo:rustc-link-arg=-Wl,-Tscript.ld");
     println!("cargo:rustc-link-arg=-Os");
     println!("cargo:rustc-link-arg=-Wl,-lc_nano");
     println!("cargo:rustc-link-arg=-Wl,-lnosys");
