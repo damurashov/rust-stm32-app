@@ -60,11 +60,5 @@ fn entry() -> ! {
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
 
-	let mut task1 = thread::task::Task::from_stack_size(&task, 512);
-
-	if let Ok(mut t) = task1 {
-		t.start();
-	}
-
 	loop {}
 }
