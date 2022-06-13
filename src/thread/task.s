@@ -1,12 +1,20 @@
 .syntax unified
+.cpu cortex-m0
+.fpu softvfp
+.thumb
 
+@ .section .rodata._scb_icsr_address
+@ .global _scb_icsr_address
 /* Info for clearing PendSV "interrupt pending" bit */
+.align 4
 _scb_icsr_address: .word 0xE000ED04
+.align 4
 _scb_icsr_pendsvclr: .word (1 << 27)
 
 	.section .text.pend_sv
 	.global pend_sv
 	.type pend_sv, %function
+	.align 4
 /* Handles task switching, relying partially on Rust-provided wrappers over task-managing code */
 pend_sv:
 	/* The lr contains EXC_RETURN */

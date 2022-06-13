@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(core_intrinsics)]
+#![feature(lang_items)]
 
 mod periph;
 mod reg;
@@ -8,8 +9,8 @@ mod reg;
 #[macro_use] mod regop;
 mod mem;
 mod tim;
+mod init;
 
-extern crate rust_stm32;
 use core::intrinsics;
 use core::alloc::{Layout, GlobalAlloc};
 

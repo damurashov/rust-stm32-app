@@ -2,20 +2,18 @@ use std::{error::Error, env};
 use cc;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("cargo:rustc-link-arg=-L{}/lib", env::current_dir().unwrap().to_str().unwrap());
-    cc::Build::new().file("src/thread/sync.s").file("src/thread/task.s").compile("asm");
+    cc::Build::new()
+        .file("src/init.s")
+        .file("src/thread/sync.s")
+        .file("src/thread/task.s").compile("asm");
+    println!("cargo:rerun-if-changed=src/init.s");
     println!("cargo:rerun-if-changed=src/thread/sync.s");
     println!("cargo:rerun-if-changed=src/thread/task.s");
+    println!("cargo:rerun-if-changed=script.ld");
 
-    println!("cargo:rustc-link-arg=-mcpu=cortex-m0");
-    println!("cargo:rustc-link-arg=-mthumb");
-    println!("cargo:rustc-link-arg=-Wl,-Tscript.ld");
-    println!("cargo:rustc-link-arg=-Os");
-    println!("cargo:rustc-link-arg=-Wl,-lc_nano");
-    println!("cargo:rustc-link-arg=-Wl,-lnosys");
-    // println!("cargo:rustc-link-arg=-Wl,-specs=nano.specs");
-    // println!("cargo:rustc-link-arg=-Wl,-specs=nosys.specs");
-    println!("cargo:rustc-link-arg=-Wl,--gc-sections");
+    println!("cargo:rustc-link-search={}/lib/", env::current_dir().unwrap().to_str().unwrap());
+    println!("cargo:rustc-link-lib=c_nano");
+    println!("cargo:rustc-link-lib=nosys");
 
     Ok(())
 }
