@@ -54,7 +54,6 @@ fn entry() -> ! {
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
-	periph::systick::configure();
 	periph::pendsv::configure();
 
 	const TIM14_RESOLUTION_HZ: usize = 500;
