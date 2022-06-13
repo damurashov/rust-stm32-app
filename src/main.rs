@@ -31,7 +31,6 @@ pub fn tim14_irq() {
 		wr!(TIM, "14", SR, UIF, 0);  // Clear interrupt flag, so it will not request interrupts indefinitely
         wr!(SCB, ICSR, PENDSVSET, 1);  // Trigger PendSV interrupt for context switching
 	}
-	periph::usart::write("Hello".as_bytes());
 }
 
 static mut COUNTER: u32 = 0;
