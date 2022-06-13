@@ -93,7 +93,7 @@ mod queue {
 	}
 
 	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
-		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
+		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX + 1) {
 			let task = QUEUE[id % TASKS_MAX];
 
 			if !task.is_null() {
