@@ -9,4 +9,3 @@ cc = "1.0.73"
 
 [dependencies]
 paste = "1.0.7"
-rust_stm32 = {path = "../rust_stm32"}
