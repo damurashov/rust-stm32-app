@@ -5,7 +5,7 @@ use core::ops::{Index, IndexMut};
 pub type Runner = &'static dyn Fn() -> ();
 type StackFrame = [usize; 16];
 
-// Warning: must be synchronized with `sync.s`. Note that when changing layout
+// Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in sync w/ task.s
 /// Stores offsets of certains registers in `StackFrame`
 ///
 enum StackFrameLayout {
