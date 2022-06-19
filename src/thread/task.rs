@@ -10,9 +10,9 @@ type StackFrame = [usize; STACK_FRAME_SIZE];
 /// Stores offsets of certains registers in `StackFrame`
 ///
 enum StackFrameLayout {
-	R0 = 8,
-	Sp = 12,
-	Pc = 14,
+	R0 = 9,
+	Sp = 0,
+	Pc = 15,
 }
 
 impl Index<StackFrameLayout> for StackFrame {
