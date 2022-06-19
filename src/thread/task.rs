@@ -118,15 +118,11 @@ mod queue {
 
 	/// Part of the task-switching ISR.
 	///
-	/// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching
-	/// to the ISR) into the current task's context storage, and loads the context of a next task.
-	///
-	/// 2 chunks are used intead of 1, because Cortex-M0 does not save all the registers in one place, and it is easier
-	/// to store the rest of them separately due to limitations of the instructions available.
-	///
 	#[no_mangle]
 	unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
-		const CHUNK_A_SIZE: usize = 8;
+		// A part of the context is stored automatically in a current SP (either MSP or PSP) before an interrupt, while
+		// the other one - in MSP.
+		const CHUNK_A_SIZE: usize = 9;
 		const CHUNK_B_SIZE: usize = 8;
 
 		match get_next_round_robin() {
@@ -144,7 +140,7 @@ mod queue {
 				};
 
 				// Load the state
-				let stack_frame_ptr = task_next.stack_begin.cast::<u8>();
+				let stack_frame_ptr = task_next.stack_frame.cast::<u8>();
 				stack_frame_ptr.copy_to_nonoverlapping(chunk_a, CHUNK_A_SIZE);
 				stack_frame_ptr.add(CHUNK_A_SIZE).copy_to_nonoverlapping(chunk_b, CHUNK_B_SIZE);
 			}
@@ -195,8 +191,8 @@ impl Task {
 				return Err(TaskError::Alloc)
 			}
 
-			(*task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
-			(*task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
+			(&mut *task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			(&mut *task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
 
 			Ok(task)
 		}
