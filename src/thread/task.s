@@ -37,11 +37,15 @@ pend_sv:
 	push {r1}
 	mov r1, r11
 	push {r1}
+	mrs r1, PSP
+	push {r1}
+	mrs r0, MSP
+	mrs r1, PSP
 	/* Switch context */
-	mrs r0, PSP
-	mrs r1, MSP
 	bl stack_frame_swap_next
 	/* Restore current registers */
+	pop {r1}
+	msr PSP, r1
 	pop {r1}
 	mov r11, r1
 	pop {r1}
