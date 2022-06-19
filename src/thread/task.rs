@@ -2,8 +2,9 @@ use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut};
 
+const STACK_FRAME_SIZE: usize = 17;
 pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [usize; 17];
+type StackFrame = [usize; STACK_FRAME_SIZE];
 
 // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in sync w/ task.s
 /// Stores offsets of certains registers in `StackFrame`
