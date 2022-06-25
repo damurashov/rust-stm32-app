@@ -6,10 +6,9 @@ const STACK_FRAME_SIZE: usize = 17;
 pub type Runner = &'static dyn Fn() -> ();
 type StackFrame = [usize; STACK_FRAME_SIZE];
 
-// Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in sync w/ task.s
 /// Stores offsets of certains registers in `StackFrame`
 ///
-enum StackFrameLayout {
+enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in sync w/ task.s
 	R0 = 9,
 	Sp = 0,
 	Pc = 15,
@@ -35,6 +34,8 @@ pub enum TaskError {
 	NotFound,
 }
 
+/// Stores context of a task
+///
 #[derive(Clone)]
 pub struct Task {
 	runner: Runner,
@@ -43,10 +44,120 @@ pub struct Task {
 	id: usize,
 }
 
-mod queue {
-	use super::{Task, StackFrame, TaskError};
+const TASKS_MAX: usize = 2; // TODO: obsolete.
 
-	const TASKS_MAX: usize = 2;
+/// A pair of references to tasks.
+///
+type ContextSwap<'a> = (&'a Task, &'a Task);  // (previous, next)
+
+type TaskId = usize;
+const TASK_ID_INVALID: TaskId = 0xffffffff;
+
+struct ContextQueue<const N: usize> {
+	queue: [*const Task; N],
+	current: TaskId,
+}
+
+/// Fixed-size registry of tasks.
+///
+impl<const N: usize> ContextQueue<N> {
+	pub const fn new() -> ContextQueue<N> {
+		ContextQueue::<N> {
+			queue: [core::ptr::null(); N],
+			current: TASK_ID_INVALID,
+		}
+	}
+
+	/// Makes an attempt to register the task in the queue.
+	///
+	pub fn register_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
+		match self.find(core::ptr::null()) {
+			Ok(id) => {
+				task.id = id;
+				self.queue[task.id as usize] = task;
+
+				Ok(())
+			},
+			Err(_) => {
+				Err(TaskError::MaxNtasks(N))
+			}
+		}
+	}
+
+	/// Searches for the task and removes it from the queue
+	///
+	pub fn unregister_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
+		if N > task.id && task.id >= 0 {
+			if self.queue[task.id as usize] == task {
+				task.id = TASK_ID_INVALID;
+				self.queue[task.id as usize] = core::ptr::null();
+
+				return Ok(())
+			}
+		}
+
+		Err(TaskError::NotFound)
+	}
+
+	fn find(&self, task: *const Task) -> Result<TaskId, TaskError> {
+		for i in 0 .. N {
+			if self.queue[i as usize] == task {
+				return Ok(i)
+			}
+		}
+
+		Err(TaskError::NotFound)
+	}
+
+	/// Checks whether there is a currently running task
+	///
+	pub fn check_has_running(&self) -> bool {
+		self.current >= 0
+	}
+}
+
+/// Encapsulated sheduling algorithm selecting a next task from the queue of pending ones.
+///
+trait Scheduler {
+	/// Runs over a queue and selects which task to run next.
+	///
+	/// In the case when there are no running (pending) tasks, the sheduler is expected to return `TaskError::NotFound`.
+	/// For the case of only one task being active at a moment, the sheduler should return this very task as both
+	/// "previous" and the "next" one.
+	///
+	/// As an effect, the `ContextQueue<N>` object's "current" field will be modified (set to the index of a next
+	/// selected task).
+	///
+	fn switch_next<const N: usize>(context_queue: &mut ContextQueue<N>) -> Result<ContextSwap, TaskError>;
+}
+
+struct RoundRobin();
+
+/// Implements "Round Robin" scheduling algorithm
+///
+impl Scheduler for RoundRobin {
+	fn switch_next<const N: usize>(context_queue: &mut ContextQueue<N>) -> Result<ContextSwap, TaskError> {
+		if context_queue.check_has_running() {
+			let current: &Task = unsafe{&*(context_queue.queue[context_queue.current as usize])};
+			let mut next = current;
+
+			for i in context_queue.current as usize + 1 .. context_queue.current as usize + N + 1 {
+				if !context_queue.queue[i % N].is_null() {
+					next = unsafe {&*context_queue.queue[i % N]};
+				}
+			}
+
+			return Ok((current, next))
+		}
+
+		Err(TaskError::NotFound)
+	}
+}
+
+mod queue {
+	use super::{Task, StackFrame, TaskError, TASKS_MAX};
+
+
 	static mut QUEUE: [*const Task; TASKS_MAX] = [
 		0 as *const Task,
 		0 as *const Task,
