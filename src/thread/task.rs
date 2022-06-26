@@ -44,7 +44,7 @@ pub enum TaskError {
 pub struct Task {
 	runner: Runner,
 	stack_begin: *mut u8,
-	stack_frame: *mut StackFrame,
+	stack_frame: StackFrame,  // Saved registers
 	id: usize,
 }
 
@@ -64,10 +64,14 @@ impl Task {
 	}
 
 	fn new() -> Task {
-		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
+		let mut task = Task {runner: &|| (),
+			stack_begin: 0 as *mut u8,
+			stack_frame: [0; STACK_FRAME_SIZE],
+			id: 0
+		};
 
-		for mut t in unsafe{*task.stack_frame} {
-			t = 0;
+		for t in &mut task.stack_frame {
+			*t = 0;
 		}
 
 		task
@@ -76,7 +80,7 @@ impl Task {
 	/// Checks whether memory for the task has been allocated successfully
 	///
 	pub fn is_alloc(&self) -> bool {
-		!(self.stack_begin.is_null() || self.stack_frame.is_null())
+		!self.stack_begin.is_null()
 	}
 
 	/// Tries to allocate memory required for the task
@@ -87,14 +91,13 @@ impl Task {
 		unsafe {
 			let mut task = Task::new();
 			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
-			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::new::<StackFrame>()) as *mut StackFrame;
 
 			if !task.is_alloc() {
 				return Err(TaskError::Alloc)
 			}
 
-			(&mut *task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
-			(&mut *task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
+			task.stack_frame[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
 
 			Ok(task)
 		}
@@ -106,7 +109,7 @@ impl Task {
 		unsafe {
 			let _critical = sync::Critical::new();
 			CONTEXT_QUEUE.register_task(self);
-			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
+			self.stack_frame[StackFrameLayout::R0] = self as *mut Task as usize;
 
 			Ok(())
 		}
@@ -118,7 +121,6 @@ impl core::ops::Drop for Task {
 		let _critical = sync::Critical::new();
 		unsafe {
 			mem::ALLOCATOR.dealloc(self.stack_begin.cast::<u8>(), core::alloc::Layout::new::<usize>());
-			mem::ALLOCATOR.dealloc(self.stack_frame.cast::<u8>(), core::alloc::Layout::new::<StackFrame>());
 			CONTEXT_QUEUE.unregister_task(self)
 		};
 	}
