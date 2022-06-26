@@ -44,6 +44,69 @@ pub struct Task {
 	id: usize,
 }
 
+impl Task {
+	#[no_mangle]
+	extern "C" fn runner_wrap(task: &mut Task) {
+		(task.runner)();
+
+		unsafe {
+			let _critical = sync::Critical::new();
+			queue::remove(task);
+		}
+
+		loop {}  // Trap until the task gets dequeued by the scheduler
+	}
+
+	fn new() -> Task {
+		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
+
+		for mut t in unsafe{*task.stack_frame} {
+			t = 0;
+		}
+
+		task
+	}
+
+	/// Checks whether memory for the task has been allocated successfully
+	///
+	pub fn is_alloc(&self) -> bool {
+		!(self.stack_begin.is_null() || self.stack_frame.is_null())
+	}
+
+	/// Tries to allocate memory required for the task
+	///
+	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
+		let _critical = sync::Critical::new();
+
+		unsafe {
+			let mut task = Task::new();
+			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
+			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::new::<StackFrame>()) as *mut StackFrame;
+
+			if !task.is_alloc() {
+				return Err(TaskError::Alloc)
+			}
+
+			(&mut *task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			(&mut *task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
+
+			Ok(task)
+		}
+	}
+
+	/// Enqueues the task for context switching
+	///
+	pub fn start(&mut self) -> Result<(), TaskError> {
+		unsafe {
+			let _critical = sync::Critical::new();
+			queue::add(self)?;
+			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
+
+			Ok(())
+		}
+	}
+}
+
 const TASKS_MAX: usize = 2; // TODO: obsolete.
 
 /// A pair of references to tasks.
@@ -255,69 +318,6 @@ mod queue {
 				stack_frame_ptr.copy_to_nonoverlapping(chunk_a, CHUNK_A_SIZE);
 				stack_frame_ptr.add(CHUNK_A_SIZE).copy_to_nonoverlapping(chunk_b, CHUNK_B_SIZE);
 			}
-		}
-	}
-}
-
-impl Task {
-	#[no_mangle]
-	extern "C" fn runner_wrap(task: &mut Task) {
-		(task.runner)();
-
-		unsafe {
-			let _critical = sync::Critical::new();
-			queue::remove(task);
-		}
-
-		loop {}  // Trap until the task gets dequeued by the scheduler
-	}
-
-	fn new() -> Task {
-		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
-
-		for mut t in unsafe{*task.stack_frame} {
-			t = 0;
-		}
-
-		task
-	}
-
-	/// Checks whether memory for the task has been allocated successfully
-	///
-	pub fn is_alloc(&self) -> bool {
-		!(self.stack_begin.is_null() || self.stack_frame.is_null())
-	}
-
-	/// Tries to allocate memory required for the task
-	///
-	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
-		let _critical = sync::Critical::new();
-
-		unsafe {
-			let mut task = Task::new();
-			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
-			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::new::<StackFrame>()) as *mut StackFrame;
-
-			if !task.is_alloc() {
-				return Err(TaskError::Alloc)
-			}
-
-			(&mut *task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
-			(&mut *task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
-
-			Ok(task)
-		}
-	}
-
-	/// Enqueues the task for context switching
-	///
-	pub fn start(&mut self) -> Result<(), TaskError> {
-		unsafe {
-			let _critical = sync::Critical::new();
-			queue::add(self)?;
-			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
-
-			Ok(())
 		}
 	}
 }
