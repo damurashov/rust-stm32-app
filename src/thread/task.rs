@@ -64,15 +64,11 @@ impl Task {
 	}
 
 	fn new() -> Task {
-		let mut task = Task {runner: &|| (),
-			stack_begin: 0 as *mut u8,
+		let task = Task {runner: &|| (),
+			stack_begin: core::ptr::null_mut(),
 			stack_frame: [0; STACK_FRAME_SIZE],
 			id: 0
 		};
-
-		for t in &mut task.stack_frame {
-			*t = 0;
-		}
 
 		task
 	}
