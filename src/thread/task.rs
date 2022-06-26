@@ -51,7 +51,7 @@ impl Task {
 
 		unsafe {
 			let _critical = sync::Critical::new();
-			queue::remove(task);
+			CONTEXT_QUEUE.unregister_task(task);
 		}
 
 		loop {}  // Trap until the task gets dequeued by the scheduler
@@ -99,11 +99,18 @@ impl Task {
 	pub fn start(&mut self) -> Result<(), TaskError> {
 		unsafe {
 			let _critical = sync::Critical::new();
-			queue::add(self)?;
+			CONTEXT_QUEUE.register_task(self);
 			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
 
 			Ok(())
 		}
+	}
+}
+
+impl core::ops::Drop for Task {
+	fn drop(&mut self) {
+		let _critical = sync::Critical::new();
+		unsafe {CONTEXT_QUEUE.unregister_task(self)};
 	}
 }
 
@@ -179,6 +186,8 @@ impl<const N: usize> ContextQueue<N> {
 	}
 }
 
+static mut CONTEXT_QUEUE: ContextQueue::<2> = ContextQueue::<2>::new();
+
 /// Encapsulated sheduling algorithm selecting a next task from the queue of pending ones.
 ///
 trait Scheduler {
@@ -217,114 +226,8 @@ impl Scheduler for RoundRobin {
 	}
 }
 
-mod queue {
-	use super::{Task, StackFrame, TaskError, TASKS_MAX};
-
-
-	static mut QUEUE: [*const Task; TASKS_MAX] = [
-		0 as *const Task,
-		0 as *const Task,
-	];
-
-	struct State {
-		current_id: usize,
-		free: usize,
-	}
-
-	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
-
-	pub unsafe fn add(task: &mut Task) -> Result<(), TaskError> {
-		task.id = 0;
-
-		for t in &mut QUEUE {
-			if t.is_null() {
-				*t = task as *const Task;
-
-				return Ok(())
-			}
-
-			task.id += 1;
-		}
-
-		Err(TaskError::MaxNtasks(TASKS_MAX))
-	}
-
-	unsafe fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
-		for mut t in QUEUE {
-			if task == t {
-				return Ok(&mut t)
-			}
-		}
-
-		Err(TaskError::NotFound)
-	}
-
-	pub unsafe fn remove(task: &Task) -> Result<(), TaskError> {
-		let mut queue_entry = find(task)?;
-
-		*queue_entry = 0 as *const Task;
-
-		Ok(())
-	}
-
-	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
-		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX + 1) {
-			let task = QUEUE[id % TASKS_MAX];
-
-			if !task.is_null() {
-				STATE.current_id = id % TASKS_MAX;
-
-				return Ok(&*task);
-			}
-		}
-
-		Err(TaskError::NotFound)
-	}
-
-	unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
-		let task = QUEUE[STATE.current_id % TASKS_MAX];
-
-		match task.is_null() {
-			true => Ok(&*task),
-			false => Err(TaskError::NotFound),
-		}
-	}
-
-	/// Part of the task-switching ISR.
-	///
-	#[no_mangle]
-	unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
-		// A part of the context is stored automatically in a current SP (either MSP or PSP) before an interrupt, while
-		// the other one - in MSP.
-		const CHUNK_A_SIZE: usize = 9;
-		const CHUNK_B_SIZE: usize = 8;
-
-		match get_next_round_robin() {
-			Err(_) => {},  // No other task is pending. Swap is not required.
-			Ok(task_next) => {
-
-				// Save the state
-				match get_current() {
-					Err(_) => {},  // Most likely, the ISR has been called from the main loop which we do not allocate memory for.
-					Ok(task) => {
-						let stack_frame_ptr = task.stack_frame.cast::<u8>();
-						chunk_a.copy_to_nonoverlapping(stack_frame_ptr, CHUNK_A_SIZE);
-						chunk_b.copy_to_nonoverlapping(stack_frame_ptr.add(CHUNK_A_SIZE), CHUNK_B_SIZE);
-					}
-				};
-
-				// Load the state
-				let stack_frame_ptr = task_next.stack_frame.cast::<u8>();
-				stack_frame_ptr.copy_to_nonoverlapping(chunk_a, CHUNK_A_SIZE);
-				stack_frame_ptr.add(CHUNK_A_SIZE).copy_to_nonoverlapping(chunk_b, CHUNK_B_SIZE);
-			}
-		}
-	}
-}
-
-impl core::ops::Drop for Task {
-	fn drop(&mut self) {
-		let _critical = sync::Critical::new();
-		unsafe {queue::remove(&self)};
-	}
+/// Part of the task-switching ISR.
+///
+#[no_mangle]
+unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
 }
