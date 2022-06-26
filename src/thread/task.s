@@ -11,6 +11,28 @@ _scb_icsr_address: .word 0xE000ED04
 .align 4
 _scb_icsr_pendsvclr: .word (1 << 27)
 
+	.align 4
+	.type _memcpy, %function
+/* Copy data from one location to another
+ r0 - dest
+ r1 - src
+ r2 - count
+*/
+_memcpy:
+	push {r7, lr}
+	movs r3, #0  @ Counter
+	b cond_check
+
+copy_inc:
+	ldr r4, [r1, r3]  @ Load to r4 from mem. pointed by r1 w/ offset =r3
+	str r4, [r0, r3]  @ Store r4 to mem. pointed by r0 w/ offset =r3
+	adds r3, #0  @ Increase the counter
+
+cond_check:
+	cmp r3, r2
+	bcc copy_inc
+	pop {r7, pc}
+
 	.section .text.pend_sv
 	.global pend_sv
 	.type pend_sv, %function
