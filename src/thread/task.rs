@@ -116,7 +116,11 @@ impl Task {
 impl core::ops::Drop for Task {
 	fn drop(&mut self) {
 		let _critical = sync::Critical::new();
-		unsafe {CONTEXT_QUEUE.unregister_task(self)};
+		unsafe {
+			mem::ALLOCATOR.dealloc(self.stack_begin.cast::<u8>(), core::alloc::Layout::new::<usize>());
+			mem::ALLOCATOR.dealloc(self.stack_frame.cast::<u8>(), core::alloc::Layout::new::<StackFrame>());
+			CONTEXT_QUEUE.unregister_task(self)
+		};
 	}
 }
 
