@@ -61,7 +61,7 @@ fn entry() -> ! {
 
 	let mut task1 = thread::task::Task::from_stack_size(&task, 512);
 
-	if let Ok(mut t) = task1 {
+	if let Ok(t) = &mut task1 {
 		t.start();
 	}
 
