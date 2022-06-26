@@ -14,6 +14,8 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	Pc = 15,
 }
 
+/// Implements index-based access to stack frame using `StackFrameLayout` enum
+///
 impl Index<StackFrameLayout> for StackFrame {
 	type Output = usize;
 
@@ -28,6 +30,8 @@ impl IndexMut<StackFrameLayout> for StackFrame {
 	}
 }
 
+/// Enumeration for error codes
+///
 pub enum TaskError {
 	Alloc,  // Could not allocate the memory
 	MaxNtasks(usize),  // The max. allowed number of tasks has been exceeded
@@ -44,6 +48,8 @@ pub struct Task {
 	id: usize,
 }
 
+/// Stores a pointer to an allocated stack and values of registers.
+///
 impl Task {
 	#[no_mangle]
 	extern "C" fn runner_wrap(task: &mut Task) {
@@ -209,10 +215,11 @@ struct RoundRobin();
 ///
 impl Scheduler for RoundRobin {
 	fn switch_next<const N: usize>(context_queue: &mut ContextQueue<N>) -> Result<ContextSwap, TaskError> {
-		if context_queue.check_has_running() {
+		if context_queue.check_has_running() {  // If there is no currently running task, there is no point in context switching
 			let current: &Task = unsafe{&*(context_queue.queue[context_queue.current as usize])};
 			let mut next = current;
 
+			// Search for id. of a next pending task
 			for i in context_queue.current as usize + 1 .. context_queue.current as usize + N + 1 {
 				if !context_queue.queue[i % N].is_null() {
 					next = unsafe {&*context_queue.queue[i % N]};
