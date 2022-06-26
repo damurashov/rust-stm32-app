@@ -168,8 +168,8 @@ impl<const N: usize> ContextQueue<N> {
 	pub fn unregister_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
 		if N > task.id && task.id >= 0 {
 			if self.queue[task.id as usize] == task {
-				task.id = TASK_ID_INVALID;
 				self.queue[task.id as usize] = core::ptr::null();
+				task.id = TASK_ID_INVALID;
 
 				return Ok(())
 			}
