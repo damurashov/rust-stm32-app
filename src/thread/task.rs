@@ -64,7 +64,8 @@ impl Task {
 	}
 
 	fn new() -> Task {
-		let task = Task {runner: &|| (),
+		let task = Task {
+			runner: &|| (),
 			stack_begin: core::ptr::null_mut(),
 			stack_frame: [0; STACK_FRAME_SIZE],
 			id: 0
