@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
+#![feature(ptr_to_from_bits)]
 
 mod periph;
 mod reg;
