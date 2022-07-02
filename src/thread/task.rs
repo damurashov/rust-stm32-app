@@ -1,6 +1,7 @@
 use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut};
+use core::arch::asm;
 
 /// Stores offsets of certains registers in `StackFrame`
 ///
@@ -245,8 +246,51 @@ impl Scheduler for RoundRobin {
 	}
 }
 
-/// Part of the task-switching ISR.
+/// Part of the task-switching ISR. Updates the currently run task's id. Returns a pair of stack frame addresses
+///
+/// # Return options
+///
+/// (0, 0) - no switching is required (there are no pending tasks, or there is only one task running)
+/// (<currsfa | 0>, nextsfa) - addresses of the current and the next task's stack frames
+///
+/// # Return registers layout
+/// R0 - currsfa
+/// R1 - nextsfa
 ///
 #[no_mangle]
-unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
+unsafe extern "C" fn task_frame_switch_get_swap() {
+
+	let mut current = {
+		if TASK_ID_INVALID == CONTEXT_QUEUE.current {
+			0
+		} else {
+			CONTEXT_QUEUE.queue[CONTEXT_QUEUE.current as usize].to_bits()
+		}
+	};
+
+	let mut next = {
+		let id = RoundRobin::select_next(&CONTEXT_QUEUE);
+
+		if TASK_ID_INVALID == id {
+
+			0
+		} else {
+			CONTEXT_QUEUE.queue[id as usize].to_bits()
+		}
+	};
+
+	if current == next {
+		current = 0;
+		next = 0;
+	}
+
+	asm!(
+		"ldr r0, [{0}]",  // Store `CONTEXT_QUEUE.current` in R0
+		"ldr r1, [{1}]",  // Store `next` in R1
+		in(reg) current,
+		in(reg) next,
+		// Prevent clobbering of output registers
+		out("r0") _,
+		out("r1") _
+	);
 }
