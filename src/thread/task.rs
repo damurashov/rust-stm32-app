@@ -265,7 +265,8 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 		if TASK_ID_INVALID == CONTEXT_QUEUE.current {
 			0
 		} else {
-			CONTEXT_QUEUE.queue[CONTEXT_QUEUE.current as usize].to_bits()
+			let task = CONTEXT_QUEUE.queue[CONTEXT_QUEUE.current as usize];
+			(&(*task).stack_frame as *const StackFrame).to_bits()
 		}
 	};
 
@@ -275,7 +276,8 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 		if TASK_ID_INVALID == id {
 			0
 		} else {
-			CONTEXT_QUEUE.queue[id as usize].to_bits()
+			let task = CONTEXT_QUEUE.queue[id as usize];
+			(&(*task).stack_frame as *const StackFrame).to_bits()
 		}
 	};
 
