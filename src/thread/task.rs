@@ -233,8 +233,8 @@ impl Scheduler for RoundRobin {
 			task_id_current => task_id_current as usize,
 		};
 
-		// Search for id. of a next pending task starting from the base (or from the beginning, if there were no
-		// currently pending task)
+		// Search for id. of a next pending task starting from the base (from the beginning, if there were no
+		// currently pending tasks)
 		for i in base + 1 .. base + N + 2 {
 			if !context_queue.queue[i % N].is_null() {
 				return i as TaskId
