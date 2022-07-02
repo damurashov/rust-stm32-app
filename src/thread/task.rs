@@ -239,7 +239,7 @@ impl Scheduler for RoundRobin {
 		// currently pending tasks)
 		for i in base + 1 .. base + N + 2 {
 			if !context_queue.queue[i % N].is_null() {
-				return i as TaskId
+				return i % N as TaskId
 			}
 		}
 
