@@ -173,6 +173,7 @@ impl<const N: usize> ContextQueue<N> {
 	pub fn register_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
 		match self.find(core::ptr::null()) {
 			Ok(id) => {
+				self.queue[id as usize] = task;
 				Ok(())
 			},
 			Err(_) => {
