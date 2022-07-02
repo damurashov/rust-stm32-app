@@ -127,7 +127,7 @@ const TASKS_MAX: usize = 2; // TODO: obsolete.
 
 /// A pair of references to tasks.
 ///
-type ContextSwap<'a> = (&'a Task, &'a Task);  // (previous, next)
+type ContextSwap<'a> = (TaskId, TaskId);  // (previous, next)
 
 type TaskId = usize;
 const TASK_ID_INVALID: TaskId = 0xffffffff;
