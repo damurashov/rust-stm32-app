@@ -116,6 +116,7 @@ impl Task {
 
 			task.stack_frame[StackFrameLayout::Pc] = Task::runner_wrap as usize;
 			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
+			task.runner = runner;
 
 			Ok(task)
 		}
