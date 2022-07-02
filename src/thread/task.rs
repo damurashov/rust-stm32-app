@@ -191,7 +191,7 @@ impl<const N: usize> ContextQueue<N> {
 	/// Checks whether there is a currently running task
 	///
 	pub fn check_has_running(&self) -> bool {
-		self.current >= 0
+		self.current != TASK_ID_INVALID
 	}
 }
 
