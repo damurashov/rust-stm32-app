@@ -2,17 +2,39 @@ use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut};
 
-const STACK_FRAME_SIZE: usize = 17;
-pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [usize; STACK_FRAME_SIZE];
-
 /// Stores offsets of certains registers in `StackFrame`
 ///
-enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in sync w/ task.s
-	R0 = 9,
-	Sp = 0,
-	Pc = 15,
+enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in accordance w/ the layout expected by task.s
+
+	// Those are automatically pushed into the stack before invoking ISR. By the moment of context switching, the values
+	// will have been stored in a mem. pointed by a currently used stack (PSP in our case). Refer to p.26 of
+	// stm32f030f4's "Programming manual"
+	R0 = 0,
+	R1,
+	R2,
+	R3,
+	R12,
+	Lr,  // R14
+	Pc,  // R15
+	Xpsr,
+
+	// Those are pushed into the stack by the context-switching code. By the moment of context switching, the values
+	// will have been stored in mem. pointed by MSP (MSP is the one always used by ISRs).
+	R4,
+	R5,
+	R6,
+	R7,
+	R8,
+	R9,
+	R10,
+	R11,
+	Sp,  // R13
+
+	Size,
 }
+
+pub type Runner = &'static dyn Fn() -> ();
+type StackFrame = [usize; StackFrameLayout::Size as usize];
 
 /// Implements index-based access to stack frame using `StackFrameLayout` enum
 ///
@@ -66,7 +88,7 @@ impl Task {
 		let task = Task {
 			runner: &|| (),
 			stack_begin: core::ptr::null_mut(),
-			stack_frame: [0; STACK_FRAME_SIZE],
+			stack_frame: [0; StackFrameLayout::Size as usize],
 		};
 
 		task
