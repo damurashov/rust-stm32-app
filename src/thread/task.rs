@@ -169,6 +169,11 @@ impl<const N: usize> ContextQueue<N> {
 		if N > task.id && task.id >= 0 {
 			if self.queue[task.id as usize] == task {
 				self.queue[task.id as usize] = core::ptr::null();
+
+				if self.current == task.id {
+					self.current = TASK_ID_INVALID;
+				}
+
 				task.id = TASK_ID_INVALID;
 
 				return Ok(())
