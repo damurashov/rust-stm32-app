@@ -235,7 +235,7 @@ impl Scheduler for RoundRobin {
 
 		// Search for id. of a next pending task starting from the base (or from the beginning, if there were no
 		// currently pending task)
-		for i in base + 1 .. base + N + 1 {
+		for i in base + 1 .. base + N + 2 {
 			if !context_queue.queue[i % N].is_null() {
 				return i as TaskId
 			}
