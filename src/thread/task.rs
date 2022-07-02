@@ -260,7 +260,7 @@ impl Scheduler for RoundRobin {
 #[no_mangle]
 unsafe extern "C" fn task_frame_switch_get_swap() {
 
-	let mut current = {
+	let current = {
 		if TASK_ID_INVALID == CONTEXT_QUEUE.current {
 			0
 		} else {
@@ -268,11 +268,10 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 		}
 	};
 
-	let mut next = {
+	let next = {
 		let id = RoundRobin::select_next(&CONTEXT_QUEUE);
 
 		if TASK_ID_INVALID == id {
-
 			0
 		} else {
 			CONTEXT_QUEUE.queue[id as usize].to_bits()
