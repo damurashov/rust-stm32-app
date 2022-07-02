@@ -214,7 +214,7 @@ trait Scheduler {
 	/// As an effect, the `ContextQueue<N>` object's "current" field will be modified (set to the index of a next
 	/// selected task).
 	///
-	fn switch_next<const N: usize>(context_queue: &mut ContextQueue<N>) -> Result<ContextSwap, TaskError>;
+	fn select_next<const N: usize>(context_queue: &ContextQueue<N>) -> TaskId;
 }
 
 struct RoundRobin();
@@ -222,22 +222,21 @@ struct RoundRobin();
 /// Implements "Round Robin" scheduling algorithm
 ///
 impl Scheduler for RoundRobin {
-	fn switch_next<const N: usize>(context_queue: &mut ContextQueue<N>) -> Result<ContextSwap, TaskError> {
-		if context_queue.check_has_running() {  // If there is no currently running task, there is no point in context switching
-			let current: &Task = unsafe{&*(context_queue.queue[context_queue.current as usize])};
-			let mut next = current;
+	fn select_next<const N: usize>(context_queue: &ContextQueue<N>) -> TaskId {
+		let base = match context_queue.current {
+			TASK_ID_INVALID => 0 as usize,
+			task_id_current => task_id_current as usize,
+		};
 
-			// Search for id. of a next pending task
-			for i in context_queue.current as usize + 1 .. context_queue.current as usize + N + 1 {
-				if !context_queue.queue[i % N].is_null() {
-					next = unsafe {&*context_queue.queue[i % N]};
-				}
+		// Search for id. of a next pending task starting from the base (or from the beginning, if there were no
+		// currently pending task)
+		for i in base + 1 .. base + N + 1 {
+			if !context_queue.queue[i % N].is_null() {
+				return i as TaskId
 			}
-
-			return Ok((current, next))
 		}
 
-		Err(TaskError::NotFound)
+		TASK_ID_INVALID
 	}
 }
 
