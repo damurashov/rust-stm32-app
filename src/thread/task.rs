@@ -217,12 +217,7 @@ static mut CONTEXT_QUEUE: ContextQueue::<2> = ContextQueue::<2>::new();
 trait Scheduler {
 	/// Runs over a queue and selects which task to run next.
 	///
-	/// In the case when there are no running (pending) tasks, the sheduler is expected to return `TaskError::NotFound`.
-	/// For the case of only one task being active at a moment, the sheduler should return this very task as both
-	/// "previous" and the "next" one.
-	///
-	/// As an effect, the `ContextQueue<N>` object's "current" field will be modified (set to the index of a next
-	/// selected task).
+	/// In the case when there are no running tasks, the scheduler should return TASK_ID_INVALID.
 	///
 	fn select_next<const N: usize>(context_queue: &ContextQueue<N>) -> TaskId;
 }
