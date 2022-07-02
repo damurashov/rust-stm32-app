@@ -45,7 +45,6 @@ pub struct Task {
 	runner: Runner,
 	stack_begin: *mut u8,
 	stack_frame: StackFrame,  // Saved registers
-	id: usize,
 }
 
 /// Stores a pointer to an allocated stack and values of registers.
@@ -68,7 +67,6 @@ impl Task {
 			runner: &|| (),
 			stack_begin: core::ptr::null_mut(),
 			stack_frame: [0; STACK_FRAME_SIZE],
-			id: 0
 		};
 
 		task
@@ -152,9 +150,6 @@ impl<const N: usize> ContextQueue<N> {
 	pub fn register_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
 		match self.find(core::ptr::null()) {
 			Ok(id) => {
-				task.id = id;
-				self.queue[task.id as usize] = task;
-
 				Ok(())
 			},
 			Err(_) => {
