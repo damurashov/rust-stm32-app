@@ -255,7 +255,7 @@ impl Scheduler for RoundRobin {
 ///
 /// # Return registers layout
 /// R0 - currsfa
-/// R1 - nextsfa
+/// R3 - nextsfa
 ///
 #[no_mangle]
 unsafe extern "C" fn task_frame_switch_get_swap() {
@@ -280,11 +280,11 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 
 	asm!(
 		"ldr r0, [{0}]",  // Store `CONTEXT_QUEUE.current` in R0
-		"ldr r1, [{1}]",  // Store `next` in R1
+		"ldr r3, [{1}]",  // Store `next` in R1
 		in(reg) current,
 		in(reg) next,
 		// Prevent clobbering of output registers
 		out("r0") _,
-		out("r1") _
+		out("r3") _
 	);
 }
