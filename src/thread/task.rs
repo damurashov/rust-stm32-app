@@ -282,8 +282,8 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 	};
 
 	asm!(
-		"ldr r0, [{0}]",  // Store `CONTEXT_QUEUE.current` in R0
-		"ldr r1, [{1}]",  // Store `next` in R1
+		"movs r0, {0}",  // Store `CONTEXT_QUEUE.current` in R0
+		"movs r1, {1}",  // Store `next` in R1
 		in(reg) current,
 		in(reg) next,
 		// Prevent clobbering of output registers
