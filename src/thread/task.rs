@@ -250,7 +250,7 @@ impl Scheduler for RoundRobin {
 ///
 /// # Return options
 ///
-/// (0, 0) - no switching is required (there are no pending tasks, or there is only one task running)
+/// (A, A) - no switching is required (there are no pending tasks, or there is only one task running)
 /// (<currsfa | 0>, nextsfa) - addresses of the current and the next task's stack frames
 ///
 /// # Return registers layout
@@ -278,11 +278,6 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 			CONTEXT_QUEUE.queue[id as usize].to_bits()
 		}
 	};
-
-	if current == next {
-		current = 0;
-		next = 0;
-	}
 
 	asm!(
 		"ldr r0, [{0}]",  // Store `CONTEXT_QUEUE.current` in R0
