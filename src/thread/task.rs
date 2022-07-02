@@ -166,21 +166,14 @@ impl<const N: usize> ContextQueue<N> {
 	/// Searches for the task and removes it from the queue
 	///
 	pub fn unregister_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
-		if N > task.id && task.id >= 0 {
-			if self.queue[task.id as usize] == task {
-				self.queue[task.id as usize] = core::ptr::null();
+		let id = self.find(task)?;
+		self.queue[id as usize] = core::ptr::null();
 
-				if self.current == task.id {
-					self.current = TASK_ID_INVALID;
-				}
-
-				task.id = TASK_ID_INVALID;
-
-				return Ok(())
-			}
+		if id == self.current {
+			self.current = TASK_ID_INVALID;
 		}
 
-		Err(TaskError::NotFound)
+		Ok(())
 	}
 
 	fn find(&self, task: *const Task) -> Result<TaskId, TaskError> {
