@@ -1,5 +1,5 @@
 use crate::periph::usart;
-pub use core::fmt;
+use core::fmt;
 
 pub struct UartLogger;
 
