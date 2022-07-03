@@ -63,10 +63,10 @@ pub enum TaskError {
 
 /// A view object storing pointers to a task's memory chunks
 ///
-struct ContextView<'a> {
+struct ContextView {
 	runner: Runner,
 	stack_begin: *mut u8,
-	stack_frame: &'a StackFrame,
+	stack_frame: *const StackFrame,
 }
 
 /// Context provider is responsible for allocating and deallocating (on drop) memory chunks of sufficient capacities to
