@@ -11,6 +11,7 @@ mod reg;
 mod mem;
 mod tim;
 mod init;
+mod log;
 
 use core::intrinsics;
 use core::alloc::{Layout, GlobalAlloc};
