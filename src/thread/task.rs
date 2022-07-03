@@ -178,12 +178,13 @@ pub struct Task {
 ///
 impl Task {
 	#[no_mangle]
-	unsafe extern "C" fn runner_wrap(task: *mut Task) {
+	unsafe extern "C" fn runner_wrap(task_id: TaskId) {
+		let task = CONTEXT_QUEUE.queue[task_id as usize];
 		((*task).runner)();
 
 		unsafe {
 			let _critical = sync::Critical::new();
-			CONTEXT_QUEUE.unregister_task(&mut *task);
+			CONTEXT_QUEUE.unregister_task(task.as_ref().unwrap());
 		}
 
 		loop {}  // Trap until the task gets dequeued by the scheduler
@@ -231,8 +232,8 @@ impl Task {
 	pub fn start(&mut self) -> Result<(), TaskError> {
 		unsafe {
 			let _critical = sync::Critical::new();
-			CONTEXT_QUEUE.register_task(self);
-			self.stack_frame[StackFrameLayout::R0] = self as *mut Task as usize;
+			let task_id = CONTEXT_QUEUE.register_task(self)?;
+			self.stack_frame[StackFrameLayout::R0] = task_id;
 
 			Ok(())
 		}
