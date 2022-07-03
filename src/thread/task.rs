@@ -272,7 +272,7 @@ impl<const N: usize> ContextQueue<N> {
 		match self.find(core::ptr::null()) {
 			Ok(id) => {
 				self.queue[id as usize] = task;
-				Ok((id))
+				Ok(id)
 			},
 			Err(_) => {
 				Err(TaskError::MaxNtasks(N))
