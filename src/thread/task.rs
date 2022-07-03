@@ -182,10 +182,8 @@ impl Task {
 		let task = CONTEXT_QUEUE.queue[task_id as usize];
 		((*task).runner)();
 
-		unsafe {
-			let _critical = sync::Critical::new();
-			CONTEXT_QUEUE.unregister_task(task.as_ref().unwrap());
-		}
+		let _critical = sync::Critical::new();
+		CONTEXT_QUEUE.unregister_task(task.as_ref().unwrap());
 
 		loop {}  // Trap until the task gets dequeued by the scheduler
 	}
