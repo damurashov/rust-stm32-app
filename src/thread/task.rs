@@ -36,6 +36,8 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 
 pub type Runner = fn() -> ();
 type StackFrame = [usize; StackFrameLayout::Size as usize];
+type ContextPointer = *const Task;
+type ContextRef<'a> = &'a Task;
 
 /// Implements index-based access to stack frame using `StackFrameLayout` enum
 ///
@@ -251,7 +253,7 @@ type TaskId = usize;
 const TASK_ID_INVALID: TaskId = 0xffffffff;
 
 struct ContextQueue<const N: usize> {
-	queue: [*const Task; N],
+	queue: [ContextPointer; N],
 	current: TaskId,
 }
 
@@ -267,7 +269,7 @@ impl<const N: usize> ContextQueue<N> {
 
 	/// Makes an attempt to register the task in the queue.
 	///
-	pub fn register_task(&mut self, task: &mut Task) -> Result<usize, TaskError> {
+	pub fn register_task(&mut self, task: ContextRef) -> Result<usize, TaskError> {
 		match self.find(core::ptr::null()) {
 			Ok(id) => {
 				self.queue[id as usize] = task;
@@ -281,7 +283,7 @@ impl<const N: usize> ContextQueue<N> {
 
 	/// Searches for the task and removes it from the queue
 	///
-	pub fn unregister_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
+	pub fn unregister_task(&mut self, task: ContextRef) -> Result<(), TaskError> {
 		let id = self.find(task)?;
 		self.queue[id as usize] = core::ptr::null();
 
@@ -292,7 +294,7 @@ impl<const N: usize> ContextQueue<N> {
 		Ok(())
 	}
 
-	fn find(&self, task: *const Task) -> Result<TaskId, TaskError> {
+	fn find(&self, task: ContextPointer) -> Result<TaskId, TaskError> {
 		for i in 0 .. N {
 			if self.queue[i as usize] == task {
 				return Ok(i)
