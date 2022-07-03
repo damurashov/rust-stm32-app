@@ -74,12 +74,12 @@ pub struct Task {
 ///
 impl Task {
 	#[no_mangle]
-	extern "C" fn runner_wrap(task: &mut Task) {
-		(task.runner)();
+	unsafe extern "C" fn runner_wrap(task: *mut Task) {
+		((*task).runner)();
 
 		unsafe {
 			let _critical = sync::Critical::new();
-			CONTEXT_QUEUE.unregister_task(task);
+			CONTEXT_QUEUE.unregister_task(&mut *task);
 		}
 
 		loop {}  // Trap until the task gets dequeued by the scheduler
