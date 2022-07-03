@@ -11,7 +11,7 @@ mod reg;
 mod mem;
 mod tim;
 mod init;
-mod log;
+#[macro_use] mod log;
 
 use core::intrinsics;
 use core::alloc::{Layout, GlobalAlloc};
@@ -53,6 +53,8 @@ fn task() {
 
 #[export_name = "main"]
 fn entry() -> ! {
+	use crate::log::Logger;
+
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
@@ -62,7 +64,7 @@ fn entry() -> ! {
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
 
-	write!(log::UartLogger{}, "Hi {}! ", "there");
+	log!("Hi there!");
 
 	let mut task1 = thread::task::Task::from_stack_size(&task, 512);
 
