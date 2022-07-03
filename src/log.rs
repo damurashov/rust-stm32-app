@@ -20,6 +20,7 @@ macro_rules! log {
 	};
 }
 
+#[no_mangle]
 pub extern "C" fn log_arr(arr: *const usize, size: usize) {
 	unsafe {
 		for i in 0..size as isize {
