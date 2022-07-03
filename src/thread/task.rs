@@ -61,6 +61,109 @@ pub enum TaskError {
 	NotFound,
 }
 
+/// A view object storing pointers to a task's memory chunks
+///
+struct ContextView<'a> {
+	runner: Runner,
+	stack_begin: *mut u8,
+	stack_frame: &'a StackFrame,
+}
+
+/// Context provider is responsible for allocating and deallocating (on drop) memory chunks of sufficient capacities to
+/// store a task's stack and stack frame (a.k.a "context").
+///
+/// It enables a possibility to switch between static and dynamic allocation seamlessly.
+///
+trait Context {
+	fn context_view(&self) -> ContextView;
+}
+
+/// Statically allocates stack and stack frame storage for a task
+///
+struct StaticContext<const N: usize> {
+	runner: Runner,
+	stack: [u8; N],
+	stack_frame: StackFrame,
+}
+
+impl<const N: usize> StaticContext<N> {
+	fn new(runner: Runner) -> Self {
+		Self {
+			runner,
+			stack: [0; N],
+			stack_frame: [0; StackFrameLayout::Size as usize],
+		}
+	}
+}
+
+impl<const N: usize> Context for StaticContext<N> {
+	fn context_view(&self) -> ContextView {
+		ContextView {
+			runner: self.runner,
+			stack_begin: &self.stack as *const [u8; N] as *mut u8,
+			stack_frame: &self.stack_frame,
+		}
+	}
+}
+
+/// Dynamically allocates stack memory for a task.
+///
+pub struct DynamicContext {
+	runner: Runner,
+	stack_begin: *mut u8,
+	stack_frame: StackFrame,  // Saved registers
+}
+
+impl DynamicContext {
+	fn new() -> Self {
+		Self {
+			runner: &|| (),
+			stack_begin: core::ptr::null_mut(),
+			stack_frame: [0; StackFrameLayout::Size as usize],
+		}
+	}
+
+	/// Tries to allocate memory required for the task
+	///
+	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
+		let _critical = sync::Critical::new();
+
+		unsafe {
+			let mut task = Task::new();
+			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
+
+			if !task.is_alloc() {
+				return Err(TaskError::Alloc)
+			}
+
+			task.stack_frame[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size;  // No decrement accounting for securing stack boundaries is required, as STM32's `push` uses pre-decrement before writing a variable
+			task.runner = runner;
+
+			Ok(task)
+		}
+	}
+}
+
+impl Context for DynamicContext {
+	fn context_view(&self) -> ContextView {
+		ContextView {
+			runner: self.runner,
+			stack_begin: self.stack_begin,
+			stack_frame: &self.stack_frame,
+		}
+	}
+}
+
+impl core::ops::Drop for DynamicContext {
+	fn drop(&mut self) {
+		let _critical = sync::Critical::new();
+		unsafe {
+			mem::ALLOCATOR.dealloc(self.stack_begin.cast::<u8>(), core::alloc::Layout::new::<usize>());
+		};
+	}
+}
+
 /// Stores context of a task
 ///
 pub struct Task {
