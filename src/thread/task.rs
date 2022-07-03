@@ -63,7 +63,6 @@ pub enum TaskError {
 
 /// Stores context of a task
 ///
-#[derive(Clone)]
 pub struct Task {
 	runner: Runner,
 	stack_begin: *mut u8,
