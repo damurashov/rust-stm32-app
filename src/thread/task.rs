@@ -302,12 +302,6 @@ impl<const N: usize> ContextQueue<N> {
 
 		Err(TaskError::NotFound)
 	}
-
-	/// Checks whether there is a currently running task
-	///
-	pub fn check_has_running(&self) -> bool {
-		self.current != TASK_ID_INVALID
-	}
 }
 
 static mut CONTEXT_QUEUE: ContextQueue::<2> = ContextQueue::<2>::new();
