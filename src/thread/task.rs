@@ -273,11 +273,11 @@ impl<const N: usize> ContextQueue<N> {
 
 	/// Makes an attempt to register the task in the queue.
 	///
-	pub fn register_task(&mut self, task: &mut Task) -> Result<(), TaskError> {
+	pub fn register_task(&mut self, task: &mut Task) -> Result<usize, TaskError> {
 		match self.find(core::ptr::null()) {
 			Ok(id) => {
 				self.queue[id as usize] = task;
-				Ok(())
+				Ok((id))
 			},
 			Err(_) => {
 				Err(TaskError::MaxNtasks(N))
