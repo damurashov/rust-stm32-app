@@ -34,7 +34,7 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	Size,
 }
 
-pub type Runner = &'static dyn Fn() -> ();
+pub type Runner = fn() -> ();
 type StackFrame = [usize; StackFrameLayout::Size as usize];
 
 /// Implements index-based access to stack frame using `StackFrameLayout` enum
@@ -117,7 +117,7 @@ pub struct DynamicContext {
 impl DynamicContext {
 	fn new() -> Self {
 		Self {
-			runner: &|| (),
+			runner: || (),
 			stack_begin: core::ptr::null_mut(),
 			stack_frame: [0; StackFrameLayout::Size as usize],
 		}
@@ -189,7 +189,7 @@ impl Task {
 
 	fn new() -> Task {
 		let task = Task {
-			runner: &|| (),
+			runner: || (),
 			stack_begin: core::ptr::null_mut(),
 			stack_frame: [0; StackFrameLayout::Size as usize],
 		};
