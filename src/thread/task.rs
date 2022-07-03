@@ -247,12 +247,6 @@ impl core::ops::Drop for Task {
 	}
 }
 
-const TASKS_MAX: usize = 2; // TODO: obsolete.
-
-/// A pair of references to tasks.
-///
-type ContextSwap<'a> = (TaskId, TaskId);  // (previous, next)
-
 type TaskId = usize;
 const TASK_ID_INVALID: TaskId = 0xffffffff;
 
