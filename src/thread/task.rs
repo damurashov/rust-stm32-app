@@ -3,6 +3,14 @@ use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut};
 use core::arch::asm;
 
+pub type Runner = fn() -> ();
+type StackFrame = [usize; StackFrameLayout::Size as usize];
+type ContextPointer = *const Task;
+type ContextRef<'a> = &'a Task;
+type TaskId = usize;
+const TASK_ID_INVALID: TaskId = 0xffffffff;
+static mut CONTEXT_QUEUE: ContextQueue::<2> = ContextQueue::<2>::new();
+
 /// Stores offsets of certains registers in `StackFrame`
 ///
 enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in accordance w/ the layout expected by task.s
@@ -33,11 +41,6 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 
 	Size,
 }
-
-pub type Runner = fn() -> ();
-type StackFrame = [usize; StackFrameLayout::Size as usize];
-type ContextPointer = *const Task;
-type ContextRef<'a> = &'a Task;
 
 /// Implements index-based access to stack frame using `StackFrameLayout` enum
 ///
@@ -248,8 +251,6 @@ impl core::ops::Drop for Task {
 	}
 }
 
-type TaskId = usize;
-const TASK_ID_INVALID: TaskId = 0xffffffff;
 
 struct ContextQueue<const N: usize> {
 	queue: [ContextPointer; N],
@@ -303,8 +304,6 @@ impl<const N: usize> ContextQueue<N> {
 		Err(TaskError::NotFound)
 	}
 }
-
-static mut CONTEXT_QUEUE: ContextQueue::<2> = ContextQueue::<2>::new();
 
 /// Encapsulated sheduling algorithm selecting a next task from the queue of pending ones.
 ///
