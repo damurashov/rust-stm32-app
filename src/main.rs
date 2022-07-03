@@ -15,6 +15,7 @@ mod log;
 
 use core::intrinsics;
 use core::alloc::{Layout, GlobalAlloc};
+use core::fmt::Write;
 
 static RODATA_VARIABLE: &[u8] = b"Rodata";
 static mut BSS_VARIABLE: u32 = 0;
@@ -59,7 +60,9 @@ fn entry() -> ! {
 
 	const TIM14_RESOLUTION_HZ: usize = 500;
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
-	periph::tim14::set_timeout(tim::Duration::Milliseconds(500));
+	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
+
+	write!(log::UartLogger{}, "Hi {}! ", "there");
 
 	let mut task1 = thread::task::Task::from_stack_size(&task, 512);
 
