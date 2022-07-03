@@ -4,8 +4,17 @@ use core::fmt;
 pub struct UartLogger;
 
 impl fmt::Write for UartLogger {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        usart::write(s.as_bytes());
-        Ok(())
-    }
+	fn write_str(&mut self, s: &str) -> fmt::Result {
+		usart::write(s.as_bytes());
+		Ok(())
+	}
+}
+
+pub use UartLogger as Logger;
+
+#[macro_export]
+macro_rules! log {
+	($format:expr $(, $p:expr)*) => {
+		write!(Logger{}, $format $(, $p)*);
+	};
 }
