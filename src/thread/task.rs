@@ -130,14 +130,14 @@ impl DynamicContext {
 
 	/// Tries to allocate memory required for the task
 	///
-	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
+	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<DynamicContext, TaskError> {
 		let _critical = sync::Critical::new();
 
 		unsafe {
-			let mut task = Task::new();
+			let mut task = DynamicContext::new();
 			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
 
-			if !task.is_alloc() {
+			if task.stack_begin.is_null() {
 				return Err(TaskError::Alloc)
 			}
 
