@@ -141,7 +141,7 @@ impl DynamicContext {
 				return Err(TaskError::Alloc)
 			}
 
-			task.stack_frame[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			task.stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
 			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size;  // No decrement accounting for securing stack boundaries is required, as STM32's `push` uses pre-decrement before writing a variable
 			task.runner = runner;
 
@@ -169,6 +169,17 @@ impl core::ops::Drop for DynamicContext {
 	}
 }
 
+#[no_mangle]
+unsafe extern "C" fn runner_wrap(task_id: TaskId) {
+	let task = CONTEXT_QUEUE.queue[task_id as usize];
+	((*task).runner)();
+
+	let _critical = sync::Critical::new();
+	CONTEXT_QUEUE.unregister_task(task.as_ref().unwrap());
+
+	loop {}  // Trap until the task gets dequeued by the scheduler
+}
+
 /// Stores context of a task
 ///
 pub struct Task {
@@ -180,17 +191,6 @@ pub struct Task {
 /// Stores a pointer to an allocated stack and values of registers.
 ///
 impl Task {
-	#[no_mangle]
-	unsafe extern "C" fn runner_wrap(task_id: TaskId) {
-		let task = CONTEXT_QUEUE.queue[task_id as usize];
-		((*task).runner)();
-
-		let _critical = sync::Critical::new();
-		CONTEXT_QUEUE.unregister_task(task.as_ref().unwrap());
-
-		loop {}  // Trap until the task gets dequeued by the scheduler
-	}
-
 	fn new() -> Task {
 		let task = Task {
 			runner: || (),
@@ -220,7 +220,7 @@ impl Task {
 				return Err(TaskError::Alloc)
 			}
 
-			task.stack_frame[StackFrameLayout::Pc] = Task::runner_wrap as usize;
+			task.stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
 			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size;  // No decrement accounting for securing stack boundaries is required, as STM32's `push` uses pre-decrement before writing a variable
 			task.runner = runner;
 
