@@ -66,11 +66,5 @@ fn entry() -> ! {
 
 	log!("Hi there!");
 
-	let mut task1 = thread::task::Task::from_stack_size(task, 512);
-
-	if let Ok(t) = &mut task1 {
-		t.start();
-	}
-
 	loop {}
 }
