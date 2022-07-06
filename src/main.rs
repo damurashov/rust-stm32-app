@@ -51,6 +51,10 @@ fn task() {
 	}
 }
 
+struct MemoryHold<'a> {
+	memory: thread::task::StackMemory<'a>,
+}
+
 #[export_name = "main"]
 fn entry() -> ! {
 	use crate::log::Logger;
@@ -65,6 +69,13 @@ fn entry() -> ! {
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
 
 	log!("Hi there!");
+
+	{
+		static _memory: [u8; 12] = [0; 12];
+		// let _task_memory: thread::task::StackMemory = (&_memory).into();
+		let _task_memory: thread::task::StackMemory = (512 as usize).into();
+		let _memory_hold = MemoryHold{memory: _task_memory};
+	}
 
 	loop {}
 }

@@ -2,10 +2,10 @@ use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut, Drop};
 use core::arch::asm;
-use core::convert::From;
+use core::convert::{From, Into};
+use core::default::Default;
 
 pub type Runner = fn() -> ();
-type StackFrame = [usize; StackFrameLayout::Size as usize];
 type ContextPointer = *const Task;
 type ContextRef<'a> = &'a Task;
 type TaskId = usize;
@@ -43,6 +43,14 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	Size,
 }
 
+type StackFrame = [usize; StackFrameLayout::Size as usize];
+
+impl Default for StackFrame {
+	fn default() -> Self {
+		[0; StackFrameLayout::Size as usize]
+	}
+}
+
 /// Implements index-based access to stack frame using `StackFrameLayout` enum
 ///
 impl Index<StackFrameLayout> for StackFrame {
@@ -76,11 +84,19 @@ pub enum StackMemory<'a> {
 	Heap(DynAlloc),  // Memory has been allocated in heap
 }
 
-impl<'a> From<& StackMemory<'a>> for &'a u8 {
-	fn from(src: &StackMemory<'a>) -> &'a u8 {
+impl Default for StackMemory<'_> {
+	fn default() -> StackMemory<'static> {
+		static STUB: [u8; 0] = [];
+		(&STUB).into()
+	}
+}
+
+/// Convert memory pointer into address
+impl From<& StackMemory<'_>> for usize {
+	fn from(src: &StackMemory<'_>) -> usize {
 		match src {
-			StackMemory::Stack(r) => r,
-			StackMemory::Heap(r) => unsafe{&*r.0},
+			StackMemory::Stack(r) => (*r as *const u8).to_bits(),
+			StackMemory::Heap(r) => unsafe{(r.0 as *const u8).to_bits()},
 		}
 	}
 }
@@ -125,75 +141,68 @@ unsafe extern "C" fn runner_wrap(task_id: TaskId) {
 
 /// Stores context of a task
 ///
-pub struct Task {
+pub struct Context<'a> {
 	runner: Runner,
-	stack_begin: *mut u8,
+	stack_memory: StackMemory<'a>,
 	stack_frame: StackFrame,  // Saved registers
+}
+
+/// Stores context of a task
+///
+pub enum Task<'a> {
+	Unqueued(Context<'a>),
+	Queued(TaskId),
 }
 
 /// Stores a pointer to an allocated stack and values of registers.
 ///
-impl Task {
-	fn new() -> Task {
-		let task = Task {
-			runner: || (),
-			stack_begin: core::ptr::null_mut(),
-			stack_frame: [0; StackFrameLayout::Size as usize],
-		};
+impl<'a> Task<'a> {
 
-		task
+	fn new() -> Self {
+		Self::Unqueued(Context::<'a>{
+			runner: core::ptr::null(),
+			stack_memory: StackMemory::default(),
+			stack_frame: StackFrame::default(),
+		})
 	}
 
-	/// Checks whether memory for the task has been allocated successfully
-	///
-	pub fn is_alloc(&self) -> bool {
-		!self.stack_begin.is_null()
+	/// Constructs new task from `runner` and `stack_memory`
+	pub fn from_rs(runner: Runner, stack_memory: StackMemory<'a>) -> Self {
+		Self::Unqueued(Context::<'a>{
+			runner,
+			stack_memory,
+			stack_frame: StackFrame::default(),
+		})
 	}
 
-	/// Tries to allocate memory required for the task
-	///
-	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
-		let _critical = sync::Critical::new();
+	pub fn start(mut self) -> Result<Self, TaskError> {
+		if let Self::Unqueued(context) = self {
+			let _critical = sync::Critical::new();
+			context.stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
+			context.stack_frame[StackFrameLayout::Sp] = context.stack_memory.into();
 
-		unsafe {
-			let mut task = Task::new();
-			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
-
-			if !task.is_alloc() {
-				return Err(TaskError::Alloc)
+			unsafe {
+				let queued_id = CONTEXT_QUEUE.register_task(context)?;
+				CONTEXT_QUEUE.queue[queued_id as usize].stack_frame[StackFrameLayout::R0] = queued_id;
 			}
 
-			task.stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
-			task.stack_frame[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size;  // No decrement accounting for securing stack boundaries is required, as STM32's `push` uses pre-decrement before writing a variable
-			task.runner = runner;
-
-			Ok(task)
-		}
-	}
-
-	/// Enqueues the task for context switching
-	///
-	pub fn start(&mut self) -> Result<(), TaskError> {
-		unsafe {
-			let _critical = sync::Critical::new();
-			let task_id = CONTEXT_QUEUE.register_task(self)?;
-			self.stack_frame[StackFrameLayout::R0] = task_id;
-
-			Ok(())
+			Ok(Self::Queued(queued_id))
+		} else {
+			Ok(self)
 		}
 	}
 }
 
-impl core::ops::Drop for Task {
+impl Drop for Task<'_> {
 	fn drop(&mut self) {
-		let _critical = sync::Critical::new();
-		unsafe {
-			mem::ALLOCATOR.dealloc(self.stack_begin.cast::<u8>(), core::alloc::Layout::new::<usize>());
-			CONTEXT_QUEUE.unregister_task(self)
-		};
+		match self {
+			Self::Queued(id) => unsafe {
+				*self = Self::Unqueued(CONTEXT_QUEUE.unregister_task(id));
+			},
+			_ => {},
+		}
 	}
 }
-
 
 struct ContextQueue<const N: usize> {
 	queue: [ContextPointer; N],
