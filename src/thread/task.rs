@@ -73,7 +73,16 @@ pub struct DynAlloc(*const u8, usize);
 ///
 pub enum StackMemory<'a> {
 	Stack(&'a u8),  // Means that memory has been allocated in a parent task's stack
-	Heap(DynAlloc),  // The memory has been allocated in heap
+	Heap(DynAlloc),  // Memory has been allocated in heap
+}
+
+impl<'a> From<& StackMemory<'a>> for &'a u8 {
+	fn from(src: &StackMemory<'a>) -> &'a u8 {
+		match src {
+			StackMemory::Stack(r) => r,
+			StackMemory::Heap(r) => unsafe{&*r.0},
+		}
+	}
 }
 
 impl<'a, const N: usize> From<&'a[u8;N]> for StackMemory<'a> {
