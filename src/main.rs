@@ -3,6 +3,7 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(ptr_to_from_bits)]
+#![feature(const_fn_fn_ptr_basics)]
 
 mod periph;
 mod reg;
@@ -65,6 +66,10 @@ fn entry() -> ! {
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
 
 	log!("Hi there!");
+
+	static TASK_1_MEM: [u8; 512] = [0; 512];
+	let mut task1 = thread::task::Task::from_rs(task, (&TASK_1_MEM).into());
+	task1.start_static();
 
 	loop {}
 }
