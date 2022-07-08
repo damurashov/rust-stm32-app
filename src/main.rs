@@ -30,7 +30,6 @@ pub fn hard_fault(_sp: *const u32) -> ! {
 #[no_mangle]
 pub fn tim14_irq() {
 	use reg::*;
-	use crate::wr;
 	unsafe {
 		wr!(TIM, "14", SR, UIF, 0);  // Clear interrupt flag, so it will not request interrupts indefinitely
         wr!(SCB, ICSR, PENDSVSET, 1);  // Trigger PendSV interrupt for context switching
