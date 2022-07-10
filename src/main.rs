@@ -4,6 +4,8 @@
 #![feature(lang_items)]
 #![feature(ptr_to_from_bits)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(generic_const_exprs)]
+#![feature(int_roundings)]
 
 mod periph;
 mod reg;
@@ -66,9 +68,13 @@ fn entry() -> ! {
 
 	log!("Hi there!");
 
-	static TASK_1_MEM: [u8; 512] = [0; 512];
-	let mut task1 = thread::task::Task::from_rs(task, (&TASK_1_MEM).into());
-	task1.start_static();
+	let stack = thread::task::StaticAlloc::<512>::new();
+	let mut task = thread::task::Task::from_rs(task, stack.into());
+
+	match task.start() {
+		Err(_) => {log!("Something went wrong");}
+		Ok(_) => {},
+	};
 
 	loop {}
 }
