@@ -74,9 +74,9 @@ pub struct DynAlloc<'a> {
 }
 
 impl<'a> DynAlloc<'a> {
-	pub fn from_usize(stack_size: usize) -> Result<DynAlloc<'a>, TaskError> {
+	pub fn from_usize(mut stack_size: usize) -> Result<DynAlloc<'a>, TaskError> {
 		unsafe {
-			const FALLBACK: u8 = 0;
+			stack_size = stack_size.next_multiple_of(core::mem::size_of::<usize>());
 			let allocated = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
 
 			if allocated.is_null() {
