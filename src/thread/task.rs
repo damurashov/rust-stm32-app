@@ -2,17 +2,13 @@ use crate::{mem, thread::sync};
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut, Drop};
 use core::arch::asm;
-use core::convert::{From, Into, AsRef};
-use core::cmp::{PartialEq};
-use core::default::Default;
+use core::convert::{From};
+use core::marker::{PhantomData};
+use core::pin::Pin;
 
 pub type Runner = fn() -> ();
 type TaskId = usize;
 const TASK_ID_INVALID: TaskId = 0xffffffff;
-static mut CONTEXT_QUEUE: ContextQueue<'static, 2> = ContextQueue::<'static, 2> {
-	queue: [Context::new(), Context::new()],
-	current: TASK_ID_INVALID,
-};
 
 /// Stores offsets of certains registers in `StackFrame`
 ///
@@ -66,242 +62,182 @@ impl IndexMut<StackFrameLayout> for StackFrame {
 /// Enumeration for error codes
 ///
 pub enum TaskError {
-	Alloc,  // Could not allocate the memory
+	Alloc(usize),  // Could not allocate the memory
 	MaxNtasks(usize),  // The max. allowed number of tasks has been exceeded
 	NotFound,
 }
 
-pub struct DynAlloc(*const u8, usize);
-
-impl DynAlloc {
-	const fn new() -> DynAlloc {
-		DynAlloc(core::ptr::null(), 0)
-	}
+pub struct DynAlloc<'a> {
+	stack: *mut u8,
+	stack_size: usize,
+	_a: PhantomData<&'a mut u8>,
 }
 
-/// Stores memory allocation info
-///
-pub enum StackMemory<'a> {
-	Stack(&'a u8),  // Means that memory has been allocated in a parent task's stack
-	Heap(DynAlloc),  // Memory has been allocated in heap
-}
-
-impl StackMemory<'_> {
-	const fn new() -> StackMemory<'static> {
-		const STUB: u8 = 0;
-		StackMemory::Stack(&STUB)
-	}
-}
-
-impl<'a> AsRef<StackMemory<'a>> for StackMemory<'a> {
-	fn as_ref(&self) -> &Self {
-		self
-	}
-}
-
-/// Convert memory pointer into address
-impl From<& StackMemory<'_>> for usize {
-	fn from(src: &StackMemory<'_>) -> usize {
-		match src {
-			StackMemory::Stack(r) => (*r as *const u8).to_bits(),
-			StackMemory::Heap(r) => unsafe{(r.0 as *const u8).to_bits()},
-		}
-	}
-}
-
-impl<'a, const N: usize> From<&'a[u8;N]> for StackMemory<'a> {
-	fn from (src: &'a [u8;N]) -> StackMemory {
-		unsafe {StackMemory::Stack(&*(src as *const u8))}
-	}
-}
-
-impl From<usize> for StackMemory<'_> {
-	fn from(stack_size: usize) -> StackMemory<'static> {
+impl<'a> DynAlloc<'a> {
+	pub fn from_usize(stack_size: usize) -> Result<DynAlloc<'a>, TaskError> {
 		unsafe {
-			StackMemory::Heap(DynAlloc(
-				mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap()),
-				stack_size,
-			))
-		}
-	}
-}
+			const FALLBACK: u8 = 0;
+			let allocated = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
 
-impl Drop for DynAlloc {
-	fn drop(&mut self) {
-		if !self.0.is_null() {
-			unsafe {
-				mem::ALLOCATOR.dealloc(self.0 as *mut u8, core::alloc::Layout::new::<usize>());
+			if allocated.is_null() {
+				Err(TaskError::Alloc(stack_size))
+			} else {
+				Ok(DynAlloc {
+					stack: allocated,
+					stack_size,
+					_a: PhantomData,
+				})
 			}
 		}
 	}
 }
 
-#[no_mangle]
-unsafe extern "C" fn runner_wrap(task_id: TaskId) {
-	let task = &CONTEXT_QUEUE.queue[task_id as usize];
-	(task.runner)();
-
-	let _critical = sync::Critical::new();
-	CONTEXT_QUEUE.unregister_task(task_id);
-
-	loop {}  // Trap until the task gets dequeued by the scheduler
-}
-
-/// Stores context of a task
-///
-pub struct Context<'a> {
-	runner: Runner,
-	stack_memory: StackMemory<'a>,
-	stack_frame: StackFrame,  // Saved registers
-}
-
-impl Default for Context<'_> {
-	fn default() -> Self {
-		Context::new()
-	}
-}
-
-fn runner_stub() {
-}
-
-impl<'a> Context<'a> {
-	const fn new() -> Context<'a> {
-		Self {
-			runner: runner_stub,
-			stack_memory: StackMemory::new(),
-			stack_frame: [0; StackFrameLayout::Size as usize],
+impl<'a> Drop for DynAlloc<'a> {
+	fn drop(&mut self) {
+		unsafe {
+			mem::ALLOCATOR.dealloc(self.stack, core::alloc::Layout::new::<usize>());
 		}
 	}
+}
 
-	fn is_null(&self) -> bool {
-		let stack_addr: usize = (&self.stack_memory).into();
-		stack_addr == 0
+pub struct StaticAlloc<'a, const N: usize>
+	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+
+	stack: [u8; N.next_multiple_of(core::mem::size_of::<usize>())],
+	_a: PhantomData<Pin<&'a mut u8>>,
+}
+
+impl<'a, const N: usize> StaticAlloc<'a, N>
+	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+
+	const STACK_SIZE: usize = N.next_multiple_of(core::mem::size_of::<usize>());
+
+	pub fn new() -> Self {
+		Self {
+			stack: [0; N.next_multiple_of(core::mem::size_of::<usize>())],
+			_a: PhantomData,
+		}
 	}
 }
 
-impl PartialEq for &Context<'_> {
-	fn eq(&self, other: &Self) -> bool {
-		let addr_self: usize = (&self.stack_memory).into();
-		let addr_other: usize = (&other.stack_memory).into();
-
-		addr_self == addr_other
-	}
+#[derive(Clone, Copy)]
+enum Context {
+	Initialized(StackFrame),
+	Uninitialized,
 }
 
-/// Stores context of a task
-///
-pub enum Task<'a> {
-	Unqueued(Context<'a>),
-	Queued(TaskId),
-}
-
-pub struct ContextQueue<'a, const N: usize> {
-	queue: [Context<'a>; N],
+struct ContextQueue<const N: usize> {
+	context_queue: [Context; N],
 	current: TaskId,
 }
 
-/// Fixed-size registry of tasks.
-///
-impl<'a, const N: usize> ContextQueue<'a, N> {
-
-	/// Makes an attempt to register the task in the queue.
-	///
-	pub fn register_task(&'_ mut self, task: &'_ mut Context<'a>) -> Result<usize, TaskError> {
-
-		match self.find_null() {
-			Ok(id) => {
-				self.queue[id as usize] = core::mem::take(task);
-				Ok(id)
-			},
-			Err(_) => {
-				Err(TaskError::MaxNtasks(N))
-			}
+impl<const N: usize> ContextQueue<N> {
+	const fn new() -> Self {
+		Self {
+			context_queue: [Context::Uninitialized; N],
+			current: TASK_ID_INVALID,
 		}
 	}
 
-	/// Searches for the task and removes it from the queue
-	///
-	pub fn unregister_task(&mut self, task: TaskId) -> Result<Context<'a>, TaskError> {
-		if self.queue[task as usize].is_null() {
-			Err(TaskError::NotFound)
-		} else {
-			self.queue[task as usize] = Context::new();
+	fn alloc(&mut self) -> Result<(TaskId, &mut StackFrame), TaskError> {
+		for i in 0..N {
+			if let Context::Uninitialized = self.context_queue[i] {
+				self.context_queue[i] = Context::Initialized([0; StackFrameLayout::Size as usize]);
 
-			if task == self.current {
-				self.current = TASK_ID_INVALID;
-			}
-
-			self.queue[task as usize] = Context::new();
-
-			Ok(Context::new())
-		}
-	}
-
-	fn find_null(&self) -> Result<TaskId, TaskError> {
-		for i in 0 .. N {
-			if self.queue[i].is_null() {
-				return Ok(i)
+				if let Context::Initialized(ref mut stack_frame) = self.context_queue[i] {
+					return Ok((i, stack_frame))
+				}
 			}
 		}
 
-		Err(TaskError::NotFound)
+		Err(TaskError::MaxNtasks(N))
 	}
+
+	fn dealloc(&mut self, task_id: TaskId) {
+		self.context_queue[task_id] = Context::Uninitialized;
+
+		if self.current == task_id {
+			self.current = TASK_ID_INVALID;
+		}
+	}
+}
+
+static mut CONTEXT_QUEUE: ContextQueue<2> = ContextQueue::<2>::new();
+
+pub struct Stack<'a>(&'a mut u8, usize);
+
+impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
+	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+	fn from(mut alloc: StaticAlloc<'a, N>) -> Self {
+		Self (
+			unsafe {alloc.stack.as_mut_slice().as_mut_ptr().as_mut().unwrap()},
+			StaticAlloc::<'a, N>::STACK_SIZE,
+		)
+	}
+}
+
+impl <'a> From<DynAlloc<'a>> for Stack<'a> {
+	fn from(alloc: DynAlloc<'a>) -> Self {
+		Self(unsafe {alloc.stack.as_mut().unwrap()}, alloc.stack_size)
+	}
+}
+
+pub struct Task<'a> {
+	runner: Runner,
+	stack: Stack<'a>,
+	id: TaskId,
 }
 
 /// Stores a pointer to an allocated stack and values of registers.
 ///
-impl<'b> Task<'b> {
-
-	const fn new() -> Self {
-		Self::Unqueued(Context::<'b>{
-			runner: runner_stub,
-			stack_memory: StackMemory::new(),
-			stack_frame: [0; StackFrameLayout::Size as usize],
-		})
-	}
-
-	/// Constructs new task from `runner` and `stack_memory`
-	///
-	pub fn from_rs(runner: Runner, stack_memory: StackMemory<'b>) -> Self {
-		Self::Unqueued(Context::<'b>{
+impl<'a> Task<'a> {
+	/// New instance from runner and stack
+	pub fn from_rs(runner: Runner, stack: Stack<'a>) -> Self {
+		Self {
 			runner,
-			stack_memory,
-			stack_frame: [0; StackFrameLayout::Size as usize],
-		})
+			stack,
+			id: TASK_ID_INVALID,
+		}
 	}
 
-	pub fn start<const N: usize>(&mut self, queue: &'_ mut ContextQueue<'b, N>) -> Result<(), TaskError> {
-		if let Task::Unqueued(context) = self {
-			let _critical = sync::Critical::new();
-			context.stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
-			context.stack_frame[StackFrameLayout::Sp] = context.stack_memory.as_ref().into();
+	pub fn start(&mut self) -> Result<(), TaskError> {
+		let _critical = sync::Critical::new();
+		let (_, stack_frame) = unsafe {CONTEXT_QUEUE.alloc()}?;
 
-			unsafe {
-				let queued_id = queue.register_task(context)?;
-				queue.queue[queued_id as usize].stack_frame[StackFrameLayout::R0] = queued_id;
-				*self = Self::Queued(queued_id);
-			}
-		}
+		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
+		stack_frame[StackFrameLayout::Sp] = unsafe {(self.stack.0 as *mut u8).offset(self.stack.1 as isize).to_bits()};
+		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
 
 		Ok(())
 	}
-}
 
-impl Task<'static> {
-	pub fn start_static(&mut self) -> Result<(), TaskError> {
-		unsafe {self.start(&mut CONTEXT_QUEUE)}
-	}
-}
+	pub fn stop(&self) {
+		let _critical = sync::Critical::new();
 
-impl Drop for Task<'_> {
-	fn drop(&mut self) {
-		match self {
-			Self::Queued(id) => unsafe {
-				if let Err(_) = CONTEXT_QUEUE.unregister_task(*id) {}
-			},
-			_ => {},
+		if self.id != TASK_ID_INVALID {
+			unsafe {CONTEXT_QUEUE.dealloc(self.id)};
 		}
 	}
+}
+
+impl<'a> Drop for Task<'a> {
+	fn drop(&mut self) {
+		self.stop();
+	}
+}
+
+
+#[no_mangle]
+unsafe extern "C" fn runner_wrap(task_addr: usize) {
+	let task = (task_addr as *mut Task).as_ref().unwrap();
+	(task.runner)();
+
+	{
+		let _critical = sync::Critical::new();
+		task.stop();
+	}
+
+	loop {}  // Trap until the task gets dequeued by the scheduler
 }
 
 /// Encapsulated sheduling algorithm selecting a next task from the queue of pending ones.
@@ -328,8 +264,8 @@ impl Scheduler for RoundRobin {
 		// Search for id. of a next pending task starting from the base (from the beginning, if there were no
 		// currently pending tasks)
 		for i in base + 1 .. base + N + 2 {
-			if !context_queue.queue[i % N].is_null() {
-				return i % N as TaskId
+			if let Context::Initialized(_) = context_queue.context_queue[i % N] {
+				return i % N as TaskId;
 			}
 		}
 
@@ -354,9 +290,10 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 	let current = {
 		if TASK_ID_INVALID == CONTEXT_QUEUE.current {
 			0
+		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[CONTEXT_QUEUE.current as usize] {
+			(stack_frame as *const StackFrame).to_bits()
 		} else {
-			let ref task = CONTEXT_QUEUE.queue[CONTEXT_QUEUE.current as usize];
-			(&task.stack_frame as *const StackFrame).to_bits()
+			0
 		}
 	};
 
@@ -365,9 +302,10 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 
 		if TASK_ID_INVALID == id {
 			0
+		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[CONTEXT_QUEUE.current as usize] {
+			(stack_frame as *const StackFrame).to_bits()
 		} else {
-			let task = &CONTEXT_QUEUE.queue[id as usize];
-			(&task.stack_frame as *const StackFrame).to_bits()
+			0
 		}
 	};
 
