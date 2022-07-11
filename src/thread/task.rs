@@ -105,7 +105,8 @@ pub struct StaticAlloc<'a, const N: usize>
 	where [(); N / core::mem::size_of::<usize>()]: {
 
 	stack: [usize; N / core::mem::size_of::<usize>()],
-	_a: PhantomData<Pin<&'a mut u8>>,
+	_a: PhantomData<&'a mut u8>,
+	_b: PhantomPinned,
 }
 
 impl<'a, const N: usize> StaticAlloc<'a, N>
@@ -117,6 +118,7 @@ impl<'a, const N: usize> StaticAlloc<'a, N>
 		Self {
 			stack: [0; N / core::mem::size_of::<usize>()],
 			_a: PhantomData,
+			_b: PhantomPinned,
 		}
 	}
 }
