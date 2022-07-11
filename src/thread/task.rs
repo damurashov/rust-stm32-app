@@ -174,7 +174,7 @@ impl Stack<'_> {
 	}
 
 	fn addr_start(&self) -> usize {
-		(self.1 as *mut usize).to_bits()
+		(&self.1 as *const usize).to_bits()
 	}
 }
 
