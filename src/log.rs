@@ -1,6 +1,7 @@
 use crate::periph::usart;
 use core::fmt;
 use core::fmt::Write;
+use core::concat;
 
 pub struct UartLogger;
 
@@ -16,7 +17,7 @@ pub use UartLogger as Logger;
 #[macro_export]
 macro_rules! log {
 	($format:expr $(, $p:expr)*) => {
-		write!(Logger{}, $format $(, $p)*)
+		write!(Logger{}, concat!($format, "\r\n") $(, $p)*)
 	};
 }
 
