@@ -164,7 +164,19 @@ impl<const N: usize> ContextQueue<N> {
 
 static mut CONTEXT_QUEUE: ContextQueue<2> = ContextQueue::<2>::new();
 
-pub struct Stack<'a>(&'a mut usize, usize);
+pub struct Stack<'a>(&'a mut usize, usize);  // Begin of memory chunk, length (multiple of type)
+
+impl Stack<'_> {
+	/// Stack size in bytes
+	///
+	fn stack_size(&self) -> usize {
+		core::mem::size_of_val(self.0) * self.1
+	}
+
+	fn stack_addr_start(&self) -> usize {
+		(self.1 as *mut usize).to_bits()
+	}
+}
 
 impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
 	where [(); N / core::mem::size_of::<usize>()]: {
