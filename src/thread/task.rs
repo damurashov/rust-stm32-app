@@ -222,7 +222,7 @@ impl<'a> Task<'a> {
 		let (_, stack_frame) = unsafe {CONTEXT_QUEUE.alloc()}?;
 
 		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
-		stack_frame[StackFrameLayout::Sp] = unsafe {(self.stack.0 as *mut usize).offset(self.stack.1 as isize).to_bits()};
+		stack_frame[StackFrameLayout::Sp] = self.stack.addr_start() + self.stack.size();
 		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
 
 		Ok(())
