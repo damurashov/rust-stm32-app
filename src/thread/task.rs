@@ -1,9 +1,10 @@
-use crate::{mem, thread::sync};
+use crate::{mem, thread::sync, log, log::Logger};
+use core::fmt::Write;
 use core::alloc::GlobalAlloc;
 use core::ops::{Index, IndexMut, Drop};
 use core::arch::asm;
 use core::convert::{From};
-use core::marker::{PhantomData};
+use core::marker::{PhantomData, PhantomPinned};
 use core::pin::Pin;
 
 pub type Runner = fn() -> ();
@@ -181,6 +182,8 @@ impl Stack<'_> {
 impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
 	where [(); N / core::mem::size_of::<usize>()]: {
 	fn from(mut alloc: StaticAlloc<'a, N>) -> Self {
+		log!("Converting {:?}", core::ptr::addr_of!(alloc));
+		log!("Stack size {}", StaticAlloc::<'a, N>::STACK_SIZE * core::mem::size_of::<usize>());
 		Self (
 			unsafe {alloc.stack.as_mut_slice().as_mut_ptr().as_mut().unwrap()},
 			StaticAlloc::<'a, N>::STACK_SIZE,
@@ -247,6 +250,7 @@ impl<'a> Drop for Task<'a> {
 #[no_mangle]
 unsafe extern "C" fn runner_wrap(task_addr: usize) {
 	let task = (task_addr as *mut Task).as_ref().unwrap();
+	log!("Starting task id={:#x}", task.id);
 	(task.runner)();
 
 	{
