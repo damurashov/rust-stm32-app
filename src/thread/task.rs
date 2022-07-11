@@ -177,14 +177,15 @@ impl Stack<'_> {
 	}
 
 	fn addr_start(&self) -> usize {
-		(&self.1 as *const usize).to_bits()
+		(self.0 as *const usize).to_bits()
 	}
 }
 
-impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
+impl<'a, const N: usize> From<&'a mut StaticAlloc<'a, N>> for Stack<'a>
 	where [(); N / core::mem::size_of::<usize>()]: {
-	fn from(mut alloc: StaticAlloc<'a, N>) -> Self {
-		log!("Converting {:?}", core::ptr::addr_of!(alloc));
+
+	fn from(alloc: &'a mut StaticAlloc<'a, N>) -> Self {
+		log!("Converting {:?}", core::ptr::addr_of!(alloc.stack));
 		log!("Stack size {}", StaticAlloc::<'a, N>::STACK_SIZE * core::mem::size_of::<usize>());
 		Self (
 			unsafe {alloc.stack.as_mut_slice().as_mut_ptr().as_mut().unwrap()},
@@ -215,6 +216,7 @@ pub struct Task<'a> {
 impl<'a> Task<'a> {
 	/// New instance from runner and stack
 	pub fn from_rs(runner: Runner, stack: Stack<'a>) -> Self {
+		log!("Creating new task w/ stack at {:#x?} stack size {}", stack.addr_start(), stack.size());
 		Self {
 			runner,
 			stack,
