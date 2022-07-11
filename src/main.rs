@@ -19,13 +19,11 @@ mod init;
 use core::intrinsics;
 use core::alloc::{Layout, GlobalAlloc};
 use core::fmt::Write;
-
-static RODATA_VARIABLE: &[u8] = b"Rodata";
-static mut BSS_VARIABLE: u32 = 0;
-static mut DATA_VARIABLE: u32 = 1;
+use crate::log::Logger;
 
 #[no_mangle]
 pub fn hard_fault(_sp: *const u32) -> ! {
+	log!("Hard fault");
 	loop{}
 }
 
@@ -55,8 +53,6 @@ fn task() {
 
 #[export_name = "main"]
 fn entry() -> ! {
-	use crate::log::Logger;
-
 	periph::rcc::configure();
 	periph::gpio::configure();
 	periph::usart::configure();
@@ -69,6 +65,9 @@ fn entry() -> ! {
 	log!("Hi there!");
 
 	let stack = thread::task::StaticAlloc::<512>::new();
+
+	log!("Allocated stack at {:?}", core::ptr::addr_of!(stack));
+
 	let mut task = thread::task::Task::from_rs(task, stack.into());
 
 	match task.start() {
