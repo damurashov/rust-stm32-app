@@ -169,11 +169,11 @@ pub struct Stack<'a>(&'a mut usize, usize);  // Begin of memory chunk, length (m
 impl Stack<'_> {
 	/// Stack size in bytes
 	///
-	fn stack_size(&self) -> usize {
+	fn size(&self) -> usize {
 		core::mem::size_of_val(self.0) * self.1
 	}
 
-	fn stack_addr_start(&self) -> usize {
+	fn addr_start(&self) -> usize {
 		(self.1 as *mut usize).to_bits()
 	}
 }
