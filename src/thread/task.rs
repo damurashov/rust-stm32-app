@@ -302,7 +302,7 @@ unsafe extern "C" fn task_frame_switch_get_swap() {
 
 		if TASK_ID_INVALID == id {
 			0
-		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[CONTEXT_QUEUE.current as usize] {
+		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[id as usize] {
 			(stack_frame as *const StackFrame).to_bits()
 		} else {
 			0
