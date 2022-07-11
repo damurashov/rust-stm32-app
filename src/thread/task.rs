@@ -70,7 +70,7 @@ pub enum TaskError {
 pub struct DynAlloc<'a> {
 	stack: *mut u8,
 	stack_size: usize,
-	_a: PhantomData<&'a mut u8>,
+	_a: PhantomData<&'a mut usize>,
 }
 
 impl<'a> DynAlloc<'a> {
@@ -101,20 +101,20 @@ impl<'a> Drop for DynAlloc<'a> {
 }
 
 pub struct StaticAlloc<'a, const N: usize>
-	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+	where [(); N / core::mem::size_of::<usize>()]: {
 
-	stack: [u8; N.next_multiple_of(core::mem::size_of::<usize>())],
+	stack: [usize; N / core::mem::size_of::<usize>()],
 	_a: PhantomData<Pin<&'a mut u8>>,
 }
 
 impl<'a, const N: usize> StaticAlloc<'a, N>
-	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+	where [(); N / core::mem::size_of::<usize>()]: {
 
-	const STACK_SIZE: usize = N.next_multiple_of(core::mem::size_of::<usize>());
+	const STACK_SIZE: usize = N / core::mem::size_of::<usize>();
 
 	pub fn new() -> Self {
 		Self {
-			stack: [0; N.next_multiple_of(core::mem::size_of::<usize>())],
+			stack: [0; N / core::mem::size_of::<usize>()],
 			_a: PhantomData,
 		}
 	}
@@ -164,10 +164,10 @@ impl<const N: usize> ContextQueue<N> {
 
 static mut CONTEXT_QUEUE: ContextQueue<2> = ContextQueue::<2>::new();
 
-pub struct Stack<'a>(&'a mut u8, usize);
+pub struct Stack<'a>(&'a mut usize, usize);
 
 impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
-	where [(); N.next_multiple_of(core::mem::size_of::<usize>())]: {
+	where [(); N / core::mem::size_of::<usize>()]: {
 	fn from(mut alloc: StaticAlloc<'a, N>) -> Self {
 		Self (
 			unsafe {alloc.stack.as_mut_slice().as_mut_ptr().as_mut().unwrap()},
@@ -178,7 +178,12 @@ impl<'a, const N: usize> From<StaticAlloc<'a, N>> for Stack<'a>
 
 impl <'a> From<DynAlloc<'a>> for Stack<'a> {
 	fn from(alloc: DynAlloc<'a>) -> Self {
-		Self(unsafe {alloc.stack.as_mut().unwrap()}, alloc.stack_size)
+		unsafe {
+			let begin = <*mut usize>::from_bits(alloc.stack.to_bits().next_multiple_of(core::mem::size_of::<usize>()));
+			let size = alloc.stack.offset(alloc.stack_size as isize).offset_from(begin.cast()) as usize
+				/ core::mem::size_of::<usize>();
+			Self(&mut *begin, size)
+		}
 	}
 }
 
@@ -205,7 +210,7 @@ impl<'a> Task<'a> {
 		let (_, stack_frame) = unsafe {CONTEXT_QUEUE.alloc()}?;
 
 		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
-		stack_frame[StackFrameLayout::Sp] = unsafe {(self.stack.0 as *mut u8).offset(self.stack.1 as isize).to_bits()};
+		stack_frame[StackFrameLayout::Sp] = unsafe {(self.stack.0 as *mut usize).offset(self.stack.1 as isize).to_bits()};
 		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
 
 		Ok(())
