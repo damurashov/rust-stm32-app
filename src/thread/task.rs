@@ -16,6 +16,18 @@ const TASK_ID_INVALID: TaskId = 0xffffffff;
 enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in accordance w/ the layout expected by task.s
 	Sp = 0,  // R13
 
+	// Those are pushed into the stack by the context-switching code. By the moment of context switching, the values
+	// will have been stored in mem. pointed to by MSP (MSP is the one always used by ISRs).
+	R4,
+	R5,
+	R6,
+	R7,
+	R8,
+	R9,
+	R10,
+	R11,
+
+
 	// Those are automatically pushed into the stack before invoking ISR. By the moment of context switching, the values
 	// will have been stored in a mem. pointed by a currently used stack (PSP in our case). Refer to p.26 of
 	// stm32f030f4's "Programming manual"
@@ -27,17 +39,6 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	Lr,  // R14
 	Pc,  // R15
 	Xpsr,
-
-	// Those are pushed into the stack by the context-switching code. By the moment of context switching, the values
-	// will have been stored in mem. pointed to by MSP (MSP is the one always used by ISRs).
-	R4,
-	R5,
-	R6,
-	R7,
-	R8,
-	R9,
-	R10,
-	R11,
 
 	Size,
 }
