@@ -92,9 +92,9 @@ stack_frame_load_next:
 	@ Copy the remaining 9 registers from the next stack frame to PSP (r1, source, retains an accumulated address value, see `_memcpy` for details)
 	mrs r0, MSP
 	movs r2, #36
-	bl _memcpy  @ By that moment, the stack has been changed
+	bl _memcpy  @ Swap the current stack
 
-	@ Pop current registers from the stack
+	@ Pop current registers from the stack (by that moment, the stack has been changed)
 	pop {r4-r7}
 	pop {r0}
 	mov r8, r0
