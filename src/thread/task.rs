@@ -14,11 +14,12 @@ const TASK_ID_INVALID: TaskId = 0xffffffff;
 /// Stores offsets of certains registers in `StackFrame`
 ///
 enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in accordance w/ the layout expected by task.s
+	Sp = 0,  // R13
 
 	// Those are automatically pushed into the stack before invoking ISR. By the moment of context switching, the values
 	// will have been stored in a mem. pointed by a currently used stack (PSP in our case). Refer to p.26 of
 	// stm32f030f4's "Programming manual"
-	R0 = 0,
+	R0,
 	R1,
 	R2,
 	R3,
@@ -37,7 +38,6 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	R9,
 	R10,
 	R11,
-	Sp,  // R13
 
 	Size,
 }
