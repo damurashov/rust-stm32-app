@@ -57,8 +57,6 @@ pend_sv:
 	beq pend_sv_exit  @ Swap is not required, as there is only one running task
 
 	@ Store current registers. See `StackFrameLayout` in `task.rs`
-	mrs r3, PSP
-	push {r3}
 	mov r3, r11
 	push {r3}
 	mov r3, r10
@@ -68,6 +66,8 @@ pend_sv:
 	mov r3, r8
 	push {r3}
 	push {r4-r7}
+	mrs r3, PSP
+	push {r3}
 
 	@ Save the current stack frame, if there is one
 	cmp r0, #0
@@ -95,6 +95,8 @@ stack_frame_load_next:
 	bl _memcpy  @ Swap the current stack
 
 	@ Pop current registers from the stack (by that moment, the stack has been changed)
+	pop {r0}
+	msr PSP, r0
 	pop {r4-r7}
 	pop {r0}
 	mov r8, r0
@@ -104,8 +106,6 @@ stack_frame_load_next:
 	mov r10, r0
 	pop {r0}
 	mov r11, r0
-	pop {r0}
-	msr PSP, r0
 
 pend_sv_exit:
 	@ Pop EXC_RETURN, thus endicating end of handler routine
