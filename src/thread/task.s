@@ -89,7 +89,7 @@ stack_frame_load_next:
 	@ Copy the first 8 automatically saved registers from the next stack frame to PSP
 	movs r2, #32
 	bl _memcpy
-	@ Copy the remaining 9 registers from the next stack frame to PSP (r1, source, retains an accumulated address value, see `_memcpy` for details)
+	@ Copy the remaining 9 registers from the next stack frame to MSP (r1, source, retains an accumulated address value, see `_memcpy` for details)
 	mrs r0, MSP
 	movs r2, #36
 	bl _memcpy  @ Swap the current stack
