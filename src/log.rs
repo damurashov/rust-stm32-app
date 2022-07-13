@@ -25,9 +25,7 @@ macro_rules! log {
 pub extern "C" fn log_arr(arr: *const usize, size: usize) {
 	unsafe {
 		for i in 0..size as isize {
-			log!("{} {} \r\n", i, *arr.offset(i));
+			log!("{} {}", i, *arr.offset(i));
 		}
-
-		log!("\r\n");
 	}
 }
