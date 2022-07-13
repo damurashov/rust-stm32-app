@@ -29,7 +29,7 @@ enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note th
 	Xpsr,
 
 	// Those are pushed into the stack by the context-switching code. By the moment of context switching, the values
-	// will have been stored in mem. pointed by MSP (MSP is the one always used by ISRs).
+	// will have been stored in mem. pointed to by MSP (MSP is the one always used by ISRs).
 	R4,
 	R5,
 	R6,
