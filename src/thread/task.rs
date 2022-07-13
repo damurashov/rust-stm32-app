@@ -223,11 +223,13 @@ impl<'a> Task<'a> {
 	}
 
 	pub fn start(&mut self) -> Result<(), TaskError> {
+		const STACK_PRE_ISR_CONTEXT_SIZE: usize = core::mem::size_of::<usize>() * 8;  // Before switching to Handler mode (ISR), STM32 saves 8 registers into a current stack (that would be PSP stack pointer in our case)
+
 		let _critical = sync::Critical::new();
 		let (_, stack_frame) = unsafe {CONTEXT_QUEUE.alloc()}?;
 
 		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
-		stack_frame[StackFrameLayout::Sp] = self.stack.addr_start() + self.stack.size();
+		stack_frame[StackFrameLayout::Sp] = self.stack.addr_start() + self.stack.size() - STACK_PRE_ISR_CONTEXT_SIZE;
 		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
 
 		Ok(())
