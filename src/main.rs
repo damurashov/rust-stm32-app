@@ -62,7 +62,6 @@ fn entry() -> ! {
 	periph::tim14::configure(TIM14_RESOLUTION_HZ);
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
 
-	log!("Hi there!");
 	let mut stack = thread::task::StaticAlloc::<512>::new();
 	log!("Allocated stack at {:?}", core::ptr::addr_of!(stack));
 	let mut task = thread::task::Task::from_rs(task, (&mut stack).into());
