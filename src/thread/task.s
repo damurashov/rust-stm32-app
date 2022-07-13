@@ -85,11 +85,8 @@ pend_sv:
 	pop {r1}
 
 stack_frame_load_next:
-	mrs r0, PSP  @ Set destination for _memcpy
-	@ Copy the first 8 automatically saved registers from the next stack frame to PSP
-	movs r2, #32
-	bl _memcpy
-	@ Copy the remaining 9 registers from the next stack frame to MSP (r1, source, retains an accumulated address value, see `_memcpy` for details)
+	@ Copy 9 non-automatically saved registers from the next stack frame to MSP (r1, source, retains an accumulated
+	@ address value, see `_memcpy` for details)
 	mrs r0, MSP
 	movs r2, #36
 	bl _memcpy  @ Swap the current stack
@@ -106,6 +103,11 @@ stack_frame_load_next:
 	mov r10, r0
 	pop {r0}
 	mov r11, r0
+
+	@ Copy 8 automatically saved registers from the next stack frame to PSP
+	mrs r0, PSP  @ Set destination for _memcpy
+	movs r2, #32
+	bl _memcpy
 
 pend_sv_exit:
 	@ Pop EXC_RETURN, thus endicating end of handler routine
