@@ -73,13 +73,13 @@ pend_sv:
 	cmp r0, #0
 	beq stack_frame_load_next  @ There is no current task, proceed to loading the context of the next one
 	push {r1}  @ r1 (next stack frame address) will be used latter
-	@ Copy 8 automatically saved registers from PSP to the current stack frame
-	mrs r1, PSP
-	movs r2, #32
-	bl _memcpy
 	@ Copy the rest 9 registers from the MSP stack (r0, destiation, retains an accumulated address value, see `_memcpy` for details)
 	add r1, sp, #4
 	movs r2, #36
+	bl _memcpy
+	@ Copy 8 automatically saved registers from PSP to the current stack frame
+	mrs r1, PSP
+	movs r2, #32
 	bl _memcpy
 	@ Restore r1 (next stack frame address)
 	pop {r1}
