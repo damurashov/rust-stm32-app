@@ -63,12 +63,9 @@ fn entry() -> ! {
 	periph::tim14::set_timeout(tim::Duration::Milliseconds(3000));
 
 	log!("Hi there!");
-
-	let stack = thread::task::StaticAlloc::<512>::new();
-
+	let mut stack = thread::task::StaticAlloc::<512>::new();
 	log!("Allocated stack at {:?}", core::ptr::addr_of!(stack));
-
-	let mut task = thread::task::Task::from_rs(task, stack.into());
+	let mut task = thread::task::Task::from_rs(task, (&mut stack).into());
 
 	match task.start() {
 		Err(_) => {log!("Something went wrong");}
