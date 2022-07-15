@@ -16,8 +16,6 @@ mod tim;
 mod init;
 #[macro_use] mod log;
 
-use core::intrinsics;
-use core::alloc::{Layout, GlobalAlloc};
 use core::fmt::Write;
 use crate::log::Logger;
 
