@@ -6,7 +6,7 @@ The following is an (almost) dependency-free embedded application implementing c
 
 ## Functionality
 
-It performs no useful work apart from serving the purpose of being a challenging task.
+It performs no useful work apart from serving the purpose of being a challenging exercise.
 Put briefly, it initializes required peripherals (timer, and UART), allocates a static storage for a task's stack, registers a task in a context queue, and performs context switching in Pend SV interrupt, when it is triggered by the timer's ISR.
 The created task continuously spams into UART configured to operate at baudrate 57600.
 
@@ -38,4 +38,3 @@ The created task continuously spams into UART configured to operate at baudrate 
 	- Peripherals-related code is placed in `periph::` module;
 	- Synchronization and task management-related code resides in `thread::` module;
 	- The most semantically important part of the project is `src/thread/task.rs`, and `src/thread/task.s`. Those two handle task creation, scheduling, and context switching.
-	-
