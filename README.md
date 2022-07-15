@@ -7,7 +7,7 @@ The following is an (almost) dependency-free embedded application implementing c
 ## Functionality
 
 It performs no useful work apart from serving the purpose of being a challenging exercise.
-Put briefly, it initializes required peripherals (timer, and UART), allocates a static storage for a task's stack, registers a task in a context queue, and performs context switching in Pend SV interrupt, when it is triggered by the timer's ISR.
+Put briefly, it initializes required peripherals (timer, and UART), allocates a static storage for a task's stack, registers the task in a context queue, and performs context switching in Pend SV interrupt, when it is triggered by the timer's ISR.
 The created task continuously spams into UART configured to operate at baudrate 57600.
 
 ## Hardware
