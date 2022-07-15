@@ -5,7 +5,6 @@ use core::ops::{Index, IndexMut, Drop};
 use core::arch::asm;
 use core::convert::{From};
 use core::marker::{PhantomData, PhantomPinned};
-use core::pin::Pin;
 
 pub type Runner = fn() -> ();
 type TaskId = usize;
