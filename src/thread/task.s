@@ -6,11 +6,14 @@
 @ .section .rodata._scb_icsr_address
 @ .global _scb_icsr_address
 /* Info for clearing PendSV "interrupt pending" bit */
+.section .text._scb_icsr_address
 .align 4
 _scb_icsr_address: .word 0xE000ED04
+.section .text._scb_icsr_pendsvclr
 .align 4
 _scb_icsr_pendsvclr: .word (1 << 27)
 
+	.section .text._memcpy
 	.align 4
 	.type _memcpy, %function
 /* Copy data from one location to another
