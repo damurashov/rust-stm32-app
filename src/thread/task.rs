@@ -1,19 +1,52 @@
-use crate::{mem, thread::sync};
+use crate::{mem, thread::sync, log, log::Logger};
+use core::fmt::Write;
 use core::alloc::GlobalAlloc;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, Drop};
+use core::arch::asm;
+use core::convert::{From};
+use core::marker::{PhantomData, PhantomPinned};
+use core::pin::Pin;
 
-pub type Runner = &'static dyn Fn() -> ();
-type StackFrame = [usize; 16];
+pub type Runner = fn() -> ();
+type TaskId = usize;
+const TASK_ID_INVALID: TaskId = 0xffffffff;
 
-// Warning: must be synchronized with `sync.s`. Note that when changing layout
 /// Stores offsets of certains registers in `StackFrame`
 ///
-enum StackFrameLayout {
-	R0 = 8,
-	Sp = 12,
-	Pc = 14,
+enum StackFrameLayout {  // Warning: must be synchronized with `sync.s`. Note that the currently used layout must be in accordance w/ the layout expected by task.s
+	Sp = 0,  // R13
+
+	// Those are pushed into the stack by the context-switching code. By the moment of context switching, the values
+	// will have been stored in mem. pointed to by MSP (MSP is the one always used by ISRs).
+	R4,
+	R5,
+	R6,
+	R7,
+	R8,
+	R9,
+	R10,
+	R11,
+
+
+	// Those are automatically pushed into the stack before invoking ISR. By the moment of context switching, the values
+	// will have been stored in a mem. pointed by a currently used stack (PSP in our case). Refer to p.26 of
+	// stm32f030f4's "Programming manual"
+	R0,
+	R1,
+	R2,
+	R3,
+	R12,
+	Lr,  // R14
+	Pc,  // R15
+	Xpsr,
+
+	Size,
 }
 
+type StackFrame = [usize; StackFrameLayout::Size as usize];
+
+/// Implements index-based access to stack frame using `StackFrameLayout` enum
+///
 impl Index<StackFrameLayout> for StackFrame {
 	type Output = usize;
 
@@ -28,195 +61,290 @@ impl IndexMut<StackFrameLayout> for StackFrame {
 	}
 }
 
+/// Enumeration for error codes
+///
 pub enum TaskError {
-	Alloc,  // Could not allocate the memory
+	Alloc(usize),  // Could not allocate the memory
 	MaxNtasks(usize),  // The max. allowed number of tasks has been exceeded
 	NotFound,
 }
 
-#[derive(Clone)]
-pub struct Task {
-	runner: Runner,
-	stack_begin: *mut u8,
-	stack_frame: *mut StackFrame,
-	id: usize,
+pub struct DynAlloc<'a> {
+	stack: *mut u8,
+	stack_size: usize,
+	_a: PhantomData<&'a mut usize>,
 }
 
-mod queue {
-	use super::{Task, StackFrame, TaskError};
+impl<'a> DynAlloc<'a> {
+	pub fn from_usize(mut stack_size: usize) -> Result<DynAlloc<'a>, TaskError> {
+		unsafe {
+			stack_size = stack_size.next_multiple_of(core::mem::size_of::<usize>());
+			let allocated = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
 
-	const TASKS_MAX: usize = 2;
-	static mut QUEUE: [*const Task; TASKS_MAX] = [
-		0 as *const Task,
-		0 as *const Task,
-	];
-
-	struct State {
-		current_id: usize,
-		free: usize,
-	}
-
-	static mut STATE: State = State {current_id: 0, free: TASKS_MAX};
-
-	pub unsafe fn add(task: &mut Task) -> Result<(), TaskError> {
-		task.id = 0;
-
-		for t in &mut QUEUE {
-			if t.is_null() {
-				*t = task as *const Task;
-
-				return Ok(())
-			}
-
-			task.id += 1;
-		}
-
-		Err(TaskError::MaxNtasks(TASKS_MAX))
-	}
-
-	unsafe fn find(task: *const Task) -> Result<*mut *const Task, TaskError> {
-		for mut t in QUEUE {
-			if task == t {
-				return Ok(&mut t)
+			if allocated.is_null() {
+				Err(TaskError::Alloc(stack_size))
+			} else {
+				Ok(DynAlloc {
+					stack: allocated,
+					stack_size,
+					_a: PhantomData,
+				})
 			}
 		}
+	}
+}
 
-		Err(TaskError::NotFound)
+impl<'a> Drop for DynAlloc<'a> {
+	fn drop(&mut self) {
+		unsafe {
+			mem::ALLOCATOR.dealloc(self.stack, core::alloc::Layout::new::<usize>());
+		}
+	}
+}
+
+pub struct StaticAlloc<'a, const N: usize>
+	where [(); N / core::mem::size_of::<usize>()]: {
+
+	stack: [usize; N / core::mem::size_of::<usize>()],
+	_a: PhantomData<&'a mut u8>,
+	_b: PhantomPinned,
+}
+
+impl<'a, const N: usize> StaticAlloc<'a, N>
+	where [(); N / core::mem::size_of::<usize>()]: {
+
+	const STACK_SIZE: usize = N / core::mem::size_of::<usize>();
+
+	pub fn new() -> Self {
+		Self {
+			stack: [0; N / core::mem::size_of::<usize>()],
+			_a: PhantomData,
+			_b: PhantomPinned,
+		}
+	}
+}
+
+#[derive(Clone, Copy)]
+enum Context {
+	Initialized(StackFrame),
+	Uninitialized,
+}
+
+struct ContextQueue<const N: usize> {
+	context_queue: [Context; N],
+	current: TaskId,
+}
+
+impl<const N: usize> ContextQueue<N> {
+	const fn new() -> Self {
+		Self {
+			context_queue: [Context::Uninitialized; N],
+			current: TASK_ID_INVALID,
+		}
 	}
 
-	pub unsafe fn remove(task: &Task) -> Result<(), TaskError> {
-		let mut queue_entry = find(task)?;
+	fn alloc(&mut self) -> Result<(TaskId, &mut StackFrame), TaskError> {
+		for i in 0..N {
+			if let Context::Uninitialized = self.context_queue[i] {
+				self.context_queue[i] = Context::Initialized([0; StackFrameLayout::Size as usize]);
 
-		*queue_entry = 0 as *const Task;
+				if let Context::Initialized(ref mut stack_frame) = self.context_queue[i] {
+					return Ok((i, stack_frame))
+				}
+			}
+		}
+
+		Err(TaskError::MaxNtasks(N))
+	}
+
+	fn dealloc(&mut self, task_id: TaskId) {
+		self.context_queue[task_id] = Context::Uninitialized;
+
+		if self.current == task_id {
+			self.current = TASK_ID_INVALID;
+		}
+	}
+}
+
+static mut CONTEXT_QUEUE: ContextQueue<2> = ContextQueue::<2>::new();
+
+pub struct Stack<'a>(&'a mut usize, usize);  // Begin of memory chunk, length (multiple of type)
+
+impl Stack<'_> {
+	/// Stack size in bytes
+	///
+	fn size(&self) -> usize {
+		core::mem::size_of_val(self.0) * self.1
+	}
+
+	fn addr_start(&self) -> usize {
+		(self.0 as *const usize).to_bits()
+	}
+}
+
+impl<'a, const N: usize> From<&'a mut StaticAlloc<'a, N>> for Stack<'a>
+	where [(); N / core::mem::size_of::<usize>()]: {
+
+	fn from(alloc: &'a mut StaticAlloc<'a, N>) -> Self {
+		Self (
+			unsafe {alloc.stack.as_mut_slice().as_mut_ptr().as_mut().unwrap()},
+			StaticAlloc::<'a, N>::STACK_SIZE,
+		)
+	}
+}
+
+impl <'a> From<DynAlloc<'a>> for Stack<'a> {
+	fn from(alloc: DynAlloc<'a>) -> Self {
+		unsafe {
+			let begin = <*mut usize>::from_bits(alloc.stack.to_bits().next_multiple_of(core::mem::size_of::<usize>()));
+			let size = alloc.stack.offset(alloc.stack_size as isize).offset_from(begin.cast()) as usize
+				/ core::mem::size_of::<usize>();
+			Self(&mut *begin, size)
+		}
+	}
+}
+
+pub struct Task<'a> {
+	runner: Runner,
+	stack: Stack<'a>,
+	id: TaskId,
+}
+
+/// Stores a pointer to an allocated stack and values of registers.
+///
+impl<'a> Task<'a> {
+	/// New instance from runner and stack
+	pub fn from_rs(runner: Runner, stack: Stack<'a>) -> Self {
+		log!("Creating new task w/ stack at {:#x?} stack size {}", stack.addr_start(), stack.size());
+		Self {
+			runner,
+			stack,
+			id: TASK_ID_INVALID,
+		}
+	}
+
+	pub fn start(&mut self) -> Result<(), TaskError> {
+		const STACK_PRE_ISR_CONTEXT_SIZE: usize = core::mem::size_of::<usize>() * 8;  // Before switching to Handler mode (ISR), STM32 saves 8 registers into a current stack (that would be PSP stack pointer in our case)
+
+		let _critical = sync::Critical::new();
+		let (id, stack_frame) = unsafe {CONTEXT_QUEUE.alloc()}?;
+
+		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
+		stack_frame[StackFrameLayout::Sp] = self.stack.addr_start() + self.stack.size() - STACK_PRE_ISR_CONTEXT_SIZE;
+		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
+		stack_frame[StackFrameLayout::Xpsr] = 1 << 24 as usize;  // T-bit. For Cortex-M0, when T bit is 0, executing instructions will result in hard fault. See PM0215, p.15
+		self.id = id;
 
 		Ok(())
 	}
 
-	unsafe fn get_next_round_robin<'a>() -> Result<&'a Task, TaskError> {
-		for id in (STATE.current_id + 1)..(STATE.current_id + TASKS_MAX) {
-			let task = QUEUE[id % TASKS_MAX];
-
-			if !task.is_null() {
-				STATE.current_id = id % TASKS_MAX;
-
-				return Ok(&*task);
-			}
-		}
-
-		Err(TaskError::NotFound)
-	}
-
-	unsafe fn get_current<'a>() -> Result<&'a Task, TaskError> {
-		let task = QUEUE[STATE.current_id % TASKS_MAX];
-
-		match task.is_null() {
-			true => Ok(&*task),
-			false => Err(TaskError::NotFound),
-		}
-	}
-
-	/// Part of the task-switching ISR.
-	///
-	/// Saves `chunk_a` (manually-saved 8 4-byte words) and `chunk_b` (automatically saved by Cortex-M0 before switching
-	/// to the ISR) into the current task's context storage, and loads the context of a next task.
-	///
-	/// 2 chunks are used intead of 1, because Cortex-M0 does not save all the registers in one place, and it is easier
-	/// to store the rest of them separately due to limitations of the instructions available.
-	///
-	#[no_mangle]
-	unsafe extern "C" fn stack_frame_swap_next(chunk_a: *mut u8, chunk_b: *mut u8) {
-		const CHUNK_A_SIZE: usize = 8;
-		const CHUNK_B_SIZE: usize = 8;
-
-		match get_next_round_robin() {
-			Err(_) => {},  // No other task is pending. Swap is not required.
-			Ok(task_next) => {
-
-				// Save the state
-				match get_current() {
-					Err(_) => {},  // Most likely, the ISR has been called from the main loop which we do not allocate memory for.
-					Ok(task) => {
-						let stack_frame_ptr = task.stack_frame.cast::<u8>();
-						chunk_a.copy_to_nonoverlapping(stack_frame_ptr, CHUNK_A_SIZE);
-						chunk_b.copy_to_nonoverlapping(stack_frame_ptr.add(CHUNK_A_SIZE), CHUNK_B_SIZE);
-					}
-				};
-
-				// Load the state
-				let stack_frame_ptr = task_next.stack_begin.cast::<u8>();
-				stack_frame_ptr.copy_to_nonoverlapping(chunk_a, CHUNK_A_SIZE);
-				stack_frame_ptr.add(CHUNK_A_SIZE).copy_to_nonoverlapping(chunk_b, CHUNK_B_SIZE);
-			}
-		}
-	}
-}
-
-impl Task {
-	#[no_mangle]
-	extern "C" fn runner_wrap(task: &mut Task) {
-		(task.runner)();
-
-		unsafe {
-			let _critical = sync::Critical::new();
-			queue::remove(task);
-		}
-
-		loop {}  // Trap until the task gets dequeued by the scheduler
-	}
-
-	fn new() -> Task {
-		let mut task = Task {runner: &|| (), stack_begin: 0 as *mut u8, stack_frame: 0 as *mut StackFrame, id: 0};
-
-		for mut t in unsafe{*task.stack_frame} {
-			t = 0;
-		}
-
-		task
-	}
-
-	/// Checks whether memory for the task has been allocated successfully
-	///
-	pub fn is_alloc(&self) -> bool {
-		!(self.stack_begin.is_null() || self.stack_frame.is_null())
-	}
-
-	/// Tries to allocate memory required for the task
-	///
-	pub fn from_stack_size(runner: Runner, stack_size: usize) -> Result<Task, TaskError> {
+	pub fn stop(&self) {
 		let _critical = sync::Critical::new();
 
-		unsafe {
-			let mut task = Task::new();
-			task.stack_begin = mem::ALLOCATOR.alloc(core::alloc::Layout::from_size_align(stack_size, 4).unwrap());
-			task.stack_frame = mem::ALLOCATOR.alloc(core::alloc::Layout::new::<StackFrame>()) as *mut StackFrame;
-
-			if !task.is_alloc() {
-				return Err(TaskError::Alloc)
-			}
-
-			(*task.stack_frame)[StackFrameLayout::Pc] = Task::runner_wrap as usize;
-			(*task.stack_frame)[StackFrameLayout::Sp] = task.stack_begin as usize + stack_size - 1;
-
-			Ok(task)
-		}
-	}
-
-	/// Enqueues the task for context switching
-	///
-	pub fn start(&mut self) -> Result<(), TaskError> {
-		unsafe {
-			let _critical = sync::Critical::new();
-			queue::add(self)?;
-			(*self.stack_frame)[StackFrameLayout::R0] = self as *mut Task as usize;
-
-			Ok(())
+		if self.id != TASK_ID_INVALID {
+			unsafe {CONTEXT_QUEUE.dealloc(self.id)};
 		}
 	}
 }
 
-impl core::ops::Drop for Task {
+impl<'a> Drop for Task<'a> {
 	fn drop(&mut self) {
-		let _critical = sync::Critical::new();
-		unsafe {queue::remove(&self)};
+		self.stop();
 	}
+}
+
+
+#[no_mangle]
+unsafe extern "C" fn runner_wrap(task_addr: usize) {
+	let task = (task_addr as *mut Task).as_ref().unwrap();
+	log!("Starting task id={:#x}", task.id);
+	(task.runner)();
+
+	{
+		let _critical = sync::Critical::new();
+		task.stop();
+	}
+
+	loop {}  // Trap until the task gets dequeued by the scheduler
+}
+
+/// Encapsulated sheduling algorithm selecting a next task from the queue of pending ones.
+///
+trait Scheduler {
+	/// Runs over a queue and selects which task to run next.
+	///
+	/// In the case when there are no running tasks, the scheduler should return TASK_ID_INVALID.
+	///
+	fn select_next<const N: usize>(context_queue: &ContextQueue<N>) -> TaskId;
+}
+
+struct RoundRobin();
+
+/// Implements "Round Robin" scheduling algorithm
+///
+impl Scheduler for RoundRobin {
+	fn select_next<const N: usize>(context_queue: &ContextQueue<N>) -> TaskId {
+		let base = match context_queue.current {
+			TASK_ID_INVALID => 0 as usize,
+			task_id_current => task_id_current as usize,
+		};
+
+		// Search for id. of a next pending task starting from the base (from the beginning, if there were no
+		// currently pending tasks)
+		for i in base + 1 .. base + N + 2 {
+			if let Context::Initialized(_) = context_queue.context_queue[i % N] {
+				return i % N as TaskId;
+			}
+		}
+
+		TASK_ID_INVALID
+	}
+}
+
+/// Part of the task-switching ISR. Updates the currently run task's id. Returns a pair of stack frame addresses
+///
+/// # Return options
+///
+/// (A, A) - no switching is required (there are no pending tasks, or there is only one task running)
+/// (<currsfa | 0>, nextsfa) - addresses of the current and the next task's stack frames
+///
+/// # Return registers layout
+/// R0 - currsfa
+/// R1 - nextsfa
+///
+#[no_mangle]
+unsafe extern "C" fn task_frame_switch_get_swap() {
+
+	let current = {
+		if TASK_ID_INVALID == CONTEXT_QUEUE.current {
+			0
+		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[CONTEXT_QUEUE.current as usize] {
+			(stack_frame as *const StackFrame).to_bits()
+		} else {
+			0
+		}
+	};
+
+	let next = {
+		let id = RoundRobin::select_next(&CONTEXT_QUEUE);
+
+		if TASK_ID_INVALID == id {
+			0
+		} else if let Context::Initialized(stack_frame) = &CONTEXT_QUEUE.context_queue[id as usize] {
+			CONTEXT_QUEUE.current = id;
+			(stack_frame as *const StackFrame).to_bits()
+		} else {
+			0
+		}
+	};
+
+	asm!(
+		"movs r0, {0}",  // Store `CONTEXT_QUEUE.current` in R0
+		"movs r1, {1}",  // Store `next` in R1
+		in(reg) current,
+		in(reg) next,
+		// Prevent clobbering of output registers
+		out("r0") _,
+		out("r1") _
+	);
 }
