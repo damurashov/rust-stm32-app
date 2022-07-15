@@ -23,7 +23,7 @@ The created task continuously spams into UART configured to operate at baudrate 
 - `PA14` - 20 pin JTAG connector's `pin 9` (TCK);
 - `PA13` - 20 ping JTAG connector's `pin 7` (TMS);
 
-*Important: do not power the demo board from USB and SWD's VTREF simultaneously.*
+*Important: do not power the demo board with USB and SWD's VTREF simultaneously.*
 
 ## Implementation details
 
