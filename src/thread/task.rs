@@ -232,6 +232,7 @@ impl<'a> Task<'a> {
 		stack_frame[StackFrameLayout::Pc] = runner_wrap as usize;
 		stack_frame[StackFrameLayout::Sp] = self.stack.addr_start() + self.stack.size() - STACK_PRE_ISR_CONTEXT_SIZE;
 		stack_frame[StackFrameLayout::R0] = (self as *mut Self).to_bits();
+		stack_frame[StackFrameLayout::Xpsr] = 1 << 24 as usize;  // T-bit. For Cortex-M0, when T bit is 0, executing instructions will result in hard fault. See PM0215, p.15
 		self.id = id;
 
 		Ok(())
