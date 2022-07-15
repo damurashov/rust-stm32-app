@@ -10,8 +10,20 @@ The created task continuously spams into UART configured to operate at baudrate 
 
 ## Hardware
 
-- [STM32F030 Demo board](https://stm32-base.org/boards/STM32F030F4P6-STM32F030-DEMO-BOARD-V1.1.html#Header-1)
-- UART / USB adapter (optional)
+- [STM32F030 Demo board](https://stm32-base.org/boards/STM32F030F4P6-STM32F030-DEMO-BOARD-V1.1.html#Header-1);
+- UART / USB adapter (optional);
+- SWD debugger (optional);
+
+### Wiring
+
+- `PA2` - UART RX;
+- `PA3` - UART TX;
+- `3v3` - 20 pin JTAG connector's `pin 1` (VTREF);
+- `GND` - 20 pin JTAG connector's `pin 18` (GND);
+- `PA14` - 20 pin JTAG connector's `pin 9` (TCK);
+- `PA13` - 20 ping JTAG connector's `pin 7` (TMS);
+
+*Important: do not power the demo board from USB and SWD's VTREF simultaneously.*
 
 ## Implementation details
 
